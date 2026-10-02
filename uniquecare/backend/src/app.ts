@@ -5,6 +5,10 @@ import { connectDB } from './config/db';
 import healthRoutes from './routes/healthRoutes';
 import issueRoutes from './routes/issueRoutes';
 import authRoutes from './routes/authRoutes';
+import incidentRoutes from './routes/incidentRoutes';
+import assetRoutes from './routes/assetRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 dotenv.config();
 
@@ -32,6 +36,10 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 // API Routes that require database connection
 app.use('/api/auth', authRoutes);
 app.use('/api/issues', issueRoutes);
+app.use('/api/incidents', incidentRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error Handler Middleware
 import { errorHandler } from './middleware/errorHandler';

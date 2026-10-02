@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "brand_name": "Unicare × THE UNIQUES",
+    "description": "Core design tokens for UI implementation, featuring the Pitch Black & Crimson Red cyber-aesthetic alongside a clean light mode."
+  },
+  "colors": {
+    "dark": {
+      "background": "#09090b",
+      "background_card": "#121215",
+      "background_hover": "#27272a",
+      "foreground": "#ffffff",
+      "primary": {
+        "DEFAULT": "#dc2626",
+        "hover": "#b91c1c",
+        "foreground": "#ffffff"
+      },
+      "secondary": {
+        "DEFAULT": "#27272a",
+        "foreground": "#ffffff"
+      },
+      "muted": "#a1a1aa",
+      "border": "#27272a",
+      "success": {
+        "DEFAULT": "#16a34a",
+        "foreground": "#ffffff",
+        "background_subtle": "rgba(22, 101, 52, 0.25)"
+      },
+      "warning": {
+        "DEFAULT": "#ca8a04",
+        "foreground": "#ffffff",
+        "background_subtle": "rgba(161, 98, 7, 0.25)"
+      },
+      "destructive": {
+        "DEFAULT": "#dc2626",
+        "foreground": "#ffffff",
+        "background_subtle": "rgba(153, 27, 27, 0.25)"
+      }
+    },
+    "light": {
+      "background": "#ffffff",
+      "background_card": "#f4f4f5",
+      "background_hover": "#e4e4e7",
+      "foreground": "#09090b",
+      "primary": {
+        "DEFAULT": "#dc2626",
+        "hover": "#b91c1c",
+        "foreground": "#ffffff"
+      },
+      "secondary": {
+        "DEFAULT": "#e4e4e7",
+        "foreground": "#09090b"
+      },
+      "muted": "#71717a",
+      "border": "#e4e4e7",
+      "success": {
+        "DEFAULT": "#16a34a",
+        "foreground": "#ffffff",
+        "background_subtle": "rgba(22, 101, 52, 0.15)"
+      },
+      "warning": {
+        "DEFAULT": "#ca8a04",
+        "foreground": "#09090b",
+        "background_subtle": "rgba(161, 98, 7, 0.15)"
+      },
+      "destructive": {
+        "DEFAULT": "#dc2626",
+        "foreground": "#ffffff",
+        "background_subtle": "rgba(153, 27, 27, 0.15)"
+      }
+    }
+  },
+  "typography": {
+    "font_family_headings": ["Outfit", "sans-serif"],
+    "font_family_body": ["Plus Jakarta Sans", "sans-serif"],
+    "font_family_accent": ["Space Grotesk", "sans-serif"],
+    "font_weight_bold": "700",
+    "font_weight_semibold": "600",
+    "font_weight_normal": "400"
+  },
+  "ui": {
+    "border_radius_default": "0.5rem",
+    "border_radius_small": "0.25rem",
+    "border_radius_pill": "9999px",
+    "spacing_base_unit": "4px"
+  }
+}

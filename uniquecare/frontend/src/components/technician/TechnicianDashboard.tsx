@@ -4,7 +4,7 @@ import {
   Search, Filter, MessageSquare, Zap, Package, User,
   MapPin, Calendar, ArrowUpRight
 } from 'lucide-react'
-import type { IssueRecord } from '../services/api'
+import type { IssueRecord } from '../../services/api'
 
 interface Technician {
   id: string

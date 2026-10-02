@@ -4,8 +4,8 @@ import {
   ShieldCheck, Zap, User, Camera, Upload, RefreshCw, MessageSquare,
   Monitor, Sparkles, HelpCircle, Check, FileText, Calendar, X
 } from 'lucide-react'
-import type { IssueRecord } from '../services/api'
-import { createIssueApi } from '../services/api'
+import type { IssueRecord } from '../../services/api'
+import { createIssueApi } from '../../services/api'
 
 interface StudentDashboardProps {
   records: IssueRecord[]

@@ -1,13 +1,28 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const userSchema = new mongoose.Schema(
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  password?: string;
+  role: 'student' | 'technician' | 'admin';
+  carePoints: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const userSchema = new Schema<IUser>(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true }, // Scrambled password string
-    role: { type: String, default: 'student' }
+    password: { type: String },
+    role: {
+      type: String,
+      enum: ['student', 'technician', 'admin'],
+      default: 'student',
+    },
+    carePoints: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model<IUser>('User', userSchema);

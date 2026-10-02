@@ -1,6 +1,6 @@
 import express from 'express';
-import { getIssues, createIssue, updateIssueStatus } from '../controllers/issueController.js';
-import { protect, authorize } from '../middleware/authMiddleware.js';
+import { getIssues, createIssue, updateIssueStatus } from '../controllers/issueController';
+import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = express.Router();
 

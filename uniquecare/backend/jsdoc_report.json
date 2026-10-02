@@ -1,0 +1,20 @@
+{
+  "summary": {
+    "totalFiles": 2,
+    "filesWithFileJSDoc": 0,
+    "filesWithFunctionJSDoc": 1,
+    "filesMissingFileJSDoc": 2,
+    "filesMissingFunctionJSDoc": 1
+  },
+  "hasFileJSDoc": [],
+  "missingFileJSDoc": [
+    "api/index.js",
+    "jest.config.js"
+  ],
+  "hasFunctionJSDoc": [
+    "jest.config.js"
+  ],
+  "missingFunctionJSDoc": [
+    "api/index.js"
+  ]
+}

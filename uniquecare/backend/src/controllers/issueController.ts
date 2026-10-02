@@ -1,4 +1,4 @@
-import Issue from '../models/Issue.js';
+import Issue from '../models/Issue';
 
 // 📥 FETCH ALL ISSUES
 export const getIssues = async (req, res) => {

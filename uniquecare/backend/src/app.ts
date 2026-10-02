@@ -1,15 +1,14 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { connectDB } from './config/db.js';
-import healthRoutes from './routes/healthRoutes.js';
-import issueRoutes from './routes/issueRoutes.js';
-import authRoutes from './routes/authRoutes.js';
+import { connectDB } from './config/db';
+import healthRoutes from './routes/healthRoutes';
+import issueRoutes from './routes/issueRoutes';
+import authRoutes from './routes/authRoutes';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -18,9 +17,12 @@ app.use(express.json());
 app.use('/api', healthRoutes);
 
 // Ensure DB connection for serverless environment
-app.use(async (req, res, next) => {
+app.use(async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await connectDB();
+    // In test env, DB is connected by setup.ts
+    if (process.env.NODE_ENV !== 'test') {
+      await connectDB();
+    }
     next();
   } catch (error) {
     res.status(500).json({ success: false, message: 'Database connection failed' });
@@ -30,12 +32,5 @@ app.use(async (req, res, next) => {
 // API Routes that require database connection
 app.use('/api/auth', authRoutes);
 app.use('/api/issues', issueRoutes);
-
-// Only start the server if not running in Vercel
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server listening at http://localhost:${PORT}`);
-  });
-}
 
 export default app;

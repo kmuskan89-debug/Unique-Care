@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import User from '../models/User';
 
 // 🛡️ Middleware to verify JWT and attach authenticated user to req.user
 export const protect = async (req, res, next) => {
@@ -15,7 +15,7 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, secret);
 
       // Find user by decoded ID without returning password
-      req.user = await User.findById(decoded.id).select('-password');
+      req.user = await User.findById((decoded as any).id).select('-password');
 
       if (!req.user) {
         return res.status(401).json({ success: false, message: 'User belonging to token no longer exists' });

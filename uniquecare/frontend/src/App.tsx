@@ -25,6 +25,9 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import type { DisplayRole } from './context/AuthContext'
 import { fetchIssuesFromApi } from './services/api'
 
+import useSWR from 'swr'
+import { fetcher } from './services/api'
+
 /* ── Types ─────────────────────────────────────────────────── */
 interface IssueRecord {
   id: string
@@ -52,21 +55,7 @@ interface AssetRecord {
 }
 
 /* ── Mock Data ────────────────────────────────────────────── */
-const initialRecords: IssueRecord[] = [
-  { id: '2024BTCS205', title: 'Workstation Display HDMI Port Sync Failure', location: 'Thinkspace Lab', priority: 'Critical', status: 'In Progress', assignee: 'R. Mehta (Senior Tech)', reporter: 'Vishwajeet Kumar (Batch 4.0)', date: '2026-08-08', time: '07:45 PM', description: 'Monitor signal cuts out intermittently during GPU computation. HDMI port pins appear bent.', category: 'Desktop & Display' },
-  { id: '2023BTCS088', title: 'Overhead Seminar Projector Signal Blink', location: 'Launchspace', priority: 'High', status: 'Open', assignee: 'Unassigned', reporter: 'Priya Verma (Batch 3.0)', date: '2026-08-07', time: '04:15 PM', description: 'BenQ ceiling projector display blinks green every 15 seconds during video playback.', category: 'AV Equipment' },
-  { id: '2025BTCS159', title: 'Gigabit Switch Terminal 14 Ethernet Disconnect', location: 'Workspace', priority: 'Low', status: 'Resolved', assignee: 'S. Kulkarni', reporter: 'Anshu Patel (Batch 5.0)', date: '2026-08-05', time: '11:30 AM', description: 'Ethernet port 14 clip broken causing connection drops during server uploads.', category: 'Networking' },
-  { id: '2024BTCS125', title: 'Main Server Rack AC Cooling Unit Temp Spike', location: 'Thinkspace Lab', priority: 'Critical', status: 'In Progress', assignee: 'M. Iqbal', reporter: 'Rahul Sharma (Batch 4.0)', date: '2026-08-04', time: '02:20 PM', description: 'Air conditioner blowing warm air continuously. Room temp exceeding 34°C.', category: 'HVAC' },
-]
 
-const initialAssets: AssetRecord[] = [
-  { id: '2024BTCS205', name: 'Vishwajeet Kumar', category: 'AV Equipment', location: 'Thinkspace', status: 'Active', lastService: '2026-05-14', nextDue: '2026-11-14', health: 96 },
-  { id: '2024BTCS125', name: 'Rahul Sharma', category: 'AV Equipment', location: 'Launchspace', status: 'Maintenance', lastService: '2026-06-02', nextDue: '2026-08-02', health: 74 },
-  { id: '2025BTCS159', name: 'Anshu Patel', category: 'Networking', location: 'Workspace', status: 'Active', lastService: '2026-04-20', nextDue: '2026-10-20', health: 92 },
-  { id: '2023BTCS088', name: 'Priya Verma', category: 'HVAC', location: 'The Uniques Waiting Area', status: 'Maintenance', lastService: '2026-01-10', nextDue: '2026-07-30', health: 62 },
-  { id: '2022BTCS042', name: 'Aman Deep', category: 'Infrastructure', location: 'Thinkspace', status: 'Active', lastService: '2026-03-12', nextDue: '2026-09-12', health: 95 },
-  { id: '2025BTCS210', name: 'Neha Kapoor', category: 'AV Equipment', location: 'Launchspace', status: 'Active', lastService: '2026-07-01', nextDue: '2027-01-01', health: 98 },
-]
 
 const allNavLinks: readonly [string, string, typeof GraduationCap, readonly DisplayRole[]][] = [
   ['/student', 'Student Portal', GraduationCap, ['Student']],
@@ -923,8 +912,6 @@ function ScrollRevealManager() {
 
 /* ── Application Router ────────────────────────────────────── */
 export default function App() {
-  const [records, setRecords] = useState<IssueRecord[]>(initialRecords)
-  const [assets, setAssets] = useState<AssetRecord[]>(initialAssets)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('ucare-theme') as 'dark' | 'light') || 'dark'
   })
@@ -934,16 +921,14 @@ export default function App() {
     localStorage.setItem('ucare-theme', theme)
   }, [theme])
 
-  // Sync tickets from backend API on mount
-  useEffect(() => {
-    async function syncBackendData() {
-      const apiIssues = await fetchIssuesFromApi()
-      if (apiIssues && apiIssues.length > 0) {
-        setRecords(apiIssues)
-      }
-    }
-    syncBackendData()
-  }, [])
+  const { data: recordsData } = useSWR('/incidents', fetcher, { refreshInterval: 15000 })
+  const { data: assetsData } = useSWR('/assets', fetcher, { refreshInterval: 15000 })
+
+  const records = recordsData || []
+  const assets = assetsData || []
+
+  const setRecords = () => {}
+  const setAssets = () => {}
 
   const toggleTheme = () => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
@@ -1415,7 +1400,7 @@ function Issues({ records, onSelectIssue }: { records: IssueRecord[]; onSelectIs
   )
 }
 
-function Report({ onAddRecord }: { onAddRecord: (record: IssueRecord) => void }) {
+function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) => void, assets: AssetRecord[] }) {
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('Thinkspace')
   const [category, setCategory] = useState('AV Equipment')
@@ -1527,7 +1512,7 @@ function Report({ onAddRecord }: { onAddRecord: (record: IssueRecord) => void })
           const barcodes = await detector.detect(videoRef.current)
           if (barcodes.length > 0) {
             const code = barcodes[0].rawValue
-            const matched = initialAssets.find(a => a.id.toLowerCase() === code.toLowerCase() || code.includes(a.id))
+            const matched = assets.find(a => a.id.toLowerCase() === code.toLowerCase() || code.includes(a.id))
             if (matched) {
               applyAssetDetails(matched)
             } else {
@@ -1570,7 +1555,7 @@ function Report({ onAddRecord }: { onAddRecord: (record: IssueRecord) => void })
     setScanning(true)
     setTimeout(() => {
       setScanning(false)
-      const targetAsset = asset || initialAssets[Math.floor(Math.random() * initialAssets.length)]
+      const targetAsset = asset || assets[Math.floor(Math.random() * assets.length)]
       applyAssetDetails(targetAsset)
     }, 600)
   }
@@ -1582,7 +1567,7 @@ function Report({ onAddRecord }: { onAddRecord: (record: IssueRecord) => void })
     setScanning(true)
     setTimeout(() => {
       setScanning(false)
-      const randomAsset = initialAssets[Math.floor(Math.random() * initialAssets.length)]
+      const randomAsset = assets[Math.floor(Math.random() * assets.length)]
       applyAssetDetails(randomAsset)
     }, 750)
   }
@@ -1738,7 +1723,7 @@ function Report({ onAddRecord }: { onAddRecord: (record: IssueRecord) => void })
               QUICK SCAN REGISTERED CAMPUS ASSETS:
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {initialAssets.map(asset => (
+              {assets.map(asset => (
                 <div
                   key={asset.id}
                   className={`quick-asset-tag ${scannedAsset?.id === asset.id ? 'selected' : ''}`}

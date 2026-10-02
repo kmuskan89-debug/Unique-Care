@@ -128,6 +128,7 @@ export async function fetchIssuesFromApi(): Promise<IssueRecord[] | null> {
 }
 
 export async function createIssueApi(issue: Partial<IssueRecord>): Promise<IssueRecord | null> {
+  const token = localStorage.getItem('token');
   try {
     const res = await fetch(`${API_BASE}/issues`, {
       method: 'POST',
@@ -141,14 +142,34 @@ export async function createIssueApi(issue: Partial<IssueRecord>): Promise<Issue
     }
     return null;
   } catch (e) {
-    console.warn('Backend POST failed, using client fallback');
     return null;
   }
 }
 
+export const fetcher = async (url: string) => {
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API_BASE}${url}`, { headers });
+  if (!res.ok) {
+    const error = new Error('An error occurred while fetching the data.');
+    (error as any).info = await res.json().catch(() => ({}));
+    (error as any).status = res.status;
+    throw error;
+  }
+  const data = await res.json();
+  return data.data;
+};
+
 export async function updateIssueStatusApi(id: string, status: string): Promise<boolean> {
+  const token = localStorage.getItem('token');
   try {
-    const res = await fetch(`${API_BASE}/issues/${id}`, {
+    const res = await fetch(`${API_BASE}/incidents/${id}/status`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status }),

@@ -33,4 +33,8 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/issues', issueRoutes);
 
+// Error Handler Middleware
+import { errorHandler } from './middleware/errorHandler';
+app.use(errorHandler);
+
 export default app;

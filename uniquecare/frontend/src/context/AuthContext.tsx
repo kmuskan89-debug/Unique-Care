@@ -25,19 +25,6 @@ interface AuthContextValue {
   clearError: () => void
 }
 
-/* ── Dev mock credentials (remove when backend is ready) ── */
-const DEV_USERS: { email: string; password: string; user: AuthUser }[] = [
-  {
-    email: 'ajaydinodiya2007@gmail.com',
-    password: '1234578',
-    user: { _id: 'dev-admin-1', name: 'Ajay Dinodiya', email: 'ajaydinodiya2007@gmail.com', role: 'admin', token: 'dev-mock-admin' },
-  },
-  {
-    email: 'harshita.mittal72@gmail.com',
-    password: '1234578',
-    user: { _id: 'dev-student-1', name: 'Harshita Mittal', email: 'harshita.mittal72@gmail.com', role: 'student', token: 'dev-mock-student' },
-  },
-]
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -92,13 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Dev mock token — restore directly without API call
-      if (stored.token.startsWith('dev-mock-')) {
-        setUser(stored)
-        setLoading(false)
-        return
-      }
-
       try {
         const result = await getMeApi(stored.token)
         if (result && result.user) {
@@ -129,20 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setError(null)
     setLoading(true)
-
-    // Dev mock — check hardcoded credentials first
-    const devMatch = DEV_USERS.find(u => u.email.toLowerCase() === email.trim().toLowerCase())
-    if (devMatch) {
-      if (password !== devMatch.password) {
-        setError('Incorrect password')
-        setLoading(false)
-        return false
-      }
-      setUser(devMatch.user)
-      saveToStorage(devMatch.user)
-      setLoading(false)
-      return true
-    }
 
     try {
       const result = await loginApi(email, password)

@@ -497,7 +497,7 @@ function srgbColor(hex: string): THREE.Color { return new THREE.Color(hex).conve
 function smoothDampVec2(current: THREE.Vector2, target: THREE.Vector2, vel: THREE.Vector2, st: number, ms: number, dt: number): THREE.Vector2 {
   st = Math.max(0.0001, st); const omega = 2 / st; const x = omega * dt;
   const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
-  let change = current.clone().sub(target); const orig = target.clone();
+  const change = current.clone().sub(target); const orig = target.clone();
   const mc = ms * st; if (change.length() > mc) change.setLength(mc);
   const at = current.clone().sub(change);
   const temp = vel.clone().addScaledVector(change, omega).multiplyScalar(dt);

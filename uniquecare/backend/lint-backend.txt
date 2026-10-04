@@ -1,0 +1,59 @@
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/coverage/lcov-report/block-navigation.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/coverage/lcov-report/prettify.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/coverage/lcov-report/sorter.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/app.ts
+  31:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/config/db.ts
+  6:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/controllers/analyticsController.ts
+  6:80  warning  'next' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/controllers/assetController.ts
+  21:80  warning  'next' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/controllers/authController.ts
+  112:12  warning  'error' is defined but never used                                       @typescript-eslint/no-unused-vars
+  150:69  warning  'next' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  155:22  warning  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  156:23  warning  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  157:24  warning  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  158:23  warning  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/controllers/incidentController.ts
+  40:80  warning  'next' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/middleware/authMiddleware.ts
+   8:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:12  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/middleware/errorHandler.ts
+   7:35  warning  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+   7:69  warning  'next' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  22:57  warning  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/services/authService.ts
+  8:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/services/pushService.ts
+  19:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/src/utils/catchAsync.ts
+  3:32  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+
+/run/media/jimfleax/DEV/Projects/Unique-Care/uniquecare/backend/tests/auth.test.ts
+  4:8  warning  'mongoose' is defined but never used  @typescript-eslint/no-unused-vars
+  5:8  warning  'jwt' is defined but never used       @typescript-eslint/no-unused-vars
+
+✖ 24 problems (1 error, 23 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.
+

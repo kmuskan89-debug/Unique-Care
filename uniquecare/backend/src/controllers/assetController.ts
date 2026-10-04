@@ -17,3 +17,11 @@ export const getAssetByTagId = catchAsync(async (req: AuthRequest, res: Response
     data: { asset }
   });
 });
+
+export const getAllAssets = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const assets = await Asset.find({});
+  res.status(200).json({
+    status: 'success',
+    data: assets
+  });
+});

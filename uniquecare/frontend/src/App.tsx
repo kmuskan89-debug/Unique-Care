@@ -1266,7 +1266,7 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
           } />
           <Route path="/report" element={
             <ProtectedRoute allowedRoles={['admin', 'lab_admin', 'student']}>
-              <Report onAddRecord={(newR) => setRecords([newR, ...records])} />
+              <Report onAddRecord={(newR) => setRecords([newR, ...records])} assets={assets} />
             </ProtectedRoute>
           } />
           <Route path="/inventory" element={

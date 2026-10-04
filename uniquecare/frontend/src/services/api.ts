@@ -147,7 +147,7 @@ export async function createIssueApi(issue: Partial<IssueRecord>): Promise<Issue
 }
 
 export const fetcher = async (url: string) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token") || "";
   const headers: HeadersInit = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',

@@ -3,8 +3,8 @@ import Subscription from '../models/Subscription';
 
 // In a real app, these would come from env vars
 const vapidKeys = {
-  publicKey: process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLcg05SRYig',
-  privateKey: process.env.VAPID_PRIVATE_KEY || '8pE8H_Y4Jq2y7K_V_4oIuY1H2vVq_GZ0X_7_Q_A_T8o'
+  publicKey: process.env.VAPID_PUBLIC_KEY || 'BE7yQwCHAeFtI_tCGFQa7-DPn_nrOnMYTVMMYDiQAXpSFUlF74AigCYvpV-WKg78QWCYXi8w07ly_3QLNJMXjU0',
+  privateKey: process.env.VAPID_PRIVATE_KEY || 'VABwzc1PeVnGvLQNITCzHvxM-z8goa88MBP5a1s2ZJk'
 };
 
 webpush.setVapidDetails(

@@ -50,7 +50,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
 
   res.status(200).json({
     status: 'success',
-    data: { incidents }
+    data: incidents
   });
 });
 

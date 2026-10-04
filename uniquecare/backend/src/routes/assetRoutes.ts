@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.use(protect);
 
+router.get('/', assetController.getAllAssets);
 router.get('/:tagId', assetController.getAssetByTagId);
 
 export default router;

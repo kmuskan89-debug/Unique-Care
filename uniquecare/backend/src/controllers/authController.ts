@@ -15,7 +15,7 @@ export const registerUser = catchAsync(async (req: Request, res: Response, next:
   }
 
   // Check if user already exists
-  const userExists = await User.findOne({ email: email.toLowerCase() });
+  const userExists = await User.findOne({ email: email.trim().toLowerCase() });
   if (userExists) {
     return next(new AppError('User already exists with this email', 400));
   }
@@ -27,7 +27,7 @@ export const registerUser = catchAsync(async (req: Request, res: Response, next:
   // Create user in database
   const user = await User.create({
     name,
-    email: email.toLowerCase(),
+    email: email.trim().toLowerCase(),
     password: hashedPassword,
     role: role || 'student'
   });
@@ -57,7 +57,7 @@ export const loginUser = catchAsync(async (req: Request, res: Response, next: Ne
   }
 
   // Find user by email
-  const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: email.trim().toLowerCase() });
   if (!user) {
     return next(new AppError('Invalid email or password', 401));
   }
@@ -119,12 +119,12 @@ export const googleLogin = catchAsync(async (req: Request, res: Response, next: 
     return next(new AppError('Invalid Google token payload', 401));
   }
 
-  let user = await User.findOne({ email: email.toLowerCase() });
+  let user = await User.findOne({ email: email.trim().toLowerCase() });
 
   if (!user) {
     user = await User.create({
       name: name || 'Google User',
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
       role: 'student'
       // no password for Google users
     });

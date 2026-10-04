@@ -1453,7 +1453,7 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
 
   // Barcode Detection API listener while camera is on
   useEffect(() => {
-    let inter_val: any
+    let interval: any
     if (isCameraActive && videoRef.current && 'BarcodeDetector' in window) {
       const detector = new (window as any).BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39'] })
       interval = setInterval(async () => {

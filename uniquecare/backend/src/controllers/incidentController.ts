@@ -12,7 +12,7 @@ export const createIncident = catchAsync(async (req: AuthRequest, res: Response,
     return next(new AppError('Missing required fields: description or title', 400));
   }
 
-  let asset = null;
+  let asset: any = null;
   if (assetId) {
     asset = await Asset.findById(assetId);
   } else if (tagId) {
@@ -45,7 +45,7 @@ export const createIncident = catchAsync(async (req: AuthRequest, res: Response,
   });
 
   res.status(201).json({
-    status: 'success',
+    success: true,
     data: { incident }
   });
 });
@@ -62,7 +62,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
     .sort('-createdAt');
 
   res.status(200).json({
-    status: 'success',
+    success: true,
     data: incidents
   });
 });
@@ -83,7 +83,7 @@ export const getIncidentById = catchAsync(async (req: AuthRequest, res: Response
   }
 
   res.status(200).json({
-    status: 'success',
+    success: true,
     data: { incident }
   });
 });
@@ -106,7 +106,7 @@ export const updateIncidentStatus = catchAsync(async (req: AuthRequest, res: Res
   await incident.save();
 
   res.status(200).json({
-    status: 'success',
+    success: true,
     data: { incident }
   });
 });
@@ -131,7 +131,7 @@ export const addActivityLog = catchAsync(async (req: AuthRequest, res: Response,
   await incident.save();
 
   res.status(201).json({
-    status: 'success',
+    success: true,
     data: { incident }
   });
 });

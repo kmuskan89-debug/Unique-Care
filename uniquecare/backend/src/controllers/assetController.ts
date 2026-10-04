@@ -13,7 +13,7 @@ export const getAssetByTagId = catchAsync(async (req: AuthRequest, res: Response
   }
 
   res.status(200).json({
-    status: 'success',
+    success: true,
     data: { asset }
   });
 });
@@ -21,7 +21,7 @@ export const getAssetByTagId = catchAsync(async (req: AuthRequest, res: Response
 export const getAllAssets = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
   const assets = await Asset.find({});
   res.status(200).json({
-    status: 'success',
+    success: true,
     data: assets
   });
 });

@@ -24,7 +24,7 @@ export const getAnalytics = catchAsync(async (req: AuthRequest, res: Response, n
   const slaCompliance = totalIncidents === 0 ? 100 : ((totalIncidents - breachedCount) / totalIncidents) * 100;
   
   res.status(200).json({
-    status: 'success',
+    success: true,
     data: {
       totalIncidents,
       resolvedIncidents,

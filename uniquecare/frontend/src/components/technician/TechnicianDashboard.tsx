@@ -310,17 +310,17 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
                   </div>
 
                   {/* Technician Repair Log Snippets */}
-                  {logs[job.id] && logs[job.id].length > 0 && (
+                  {job.activityLogs && job.activityLogs.length > 0 && (
                     <div className="tech-logs-snippet-box">
                       <div className="snippet-header">
-                        <span className="snippet-badge">🔧 Technician Logs ({logs[job.id].length})</span>
+                        <span className="snippet-badge">🔧 Technician Logs ({job.activityLogs.length})</span>
                       </div>
                       <div className="snippet-list">
-                        {logs[job.id].map((log, idx) => (
+                        {job.activityLogs.map((log: any, idx: number) => (
                           <div key={idx} className="snippet-item">
-                            <span className="snippet-author">{log.author}</span>
-                            <span className="snippet-time">({log.time}):</span>
-                            <span className="snippet-text">{log.text}</span>
+                            <span className="snippet-author">{log.createdBy?.name || 'Unknown'}</span>
+                            <span className="snippet-time">({new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}):</span>
+                            <span className="snippet-text">{log.message}</span>
                           </div>
                         ))}
                       </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   BrowserRouter, Link, NavLink, Navigate, Route, Routes, useNavigate,
 } from 'react-router-dom'
-import {
+import { Mail, Lock, 
   BarChart3, Bell, Camera, CheckCircle2, CircleAlert, ClipboardList,
   Clock3, Grid2X2, LayoutDashboard,
   Menu, Package, Plus, QrCode, Search,
@@ -11,7 +11,7 @@ import {
   MapPin, ListChecks, ImagePlus, MapPinned, SendHorizonal, BadgeCheck,
   TrendingUp, TrendingDown, Calendar, Activity, Users, Building2, Gauge, ArrowUpRight, Timer, Target, Repeat, Settings,
   LogOut, Eye, EyeOff, Loader2, UserPlus, LogIn
-} from 'lucide-react'
+  } from 'lucide-react'
 import { SmartRoutingSection, WhatHappensNextSection } from './components/public/UniquesCommunitySections'
 import { PreventiveMaintenanceSection } from './components/public/PreventiveMaintenanceSection'
 import { StudentDashboard } from './components/student/StudentDashboard'
@@ -238,16 +238,16 @@ function IssueDetailModal({ issue, onClose, onStatusChange }: {
 function Home({ 
   theme, 
   toggleTheme,
-  initialAuthModal = null
+  initialAuthModal = false
 }: { 
   records?: IssueRecord[]; 
   theme: 'dark' | 'light'; 
   toggleTheme: () => void;
-  initialAuthModal?: 'login' | 'signup' | null;
+  initialAuthModal?: boolean;
 }) {
   const navigate = useNavigate()
   const { isAuthenticated, user } = useAuth()
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup' | null>(initialAuthModal)
+  const [authModalMode, setAuthModalMode] = useState<boolean>(!!initialAuthModal)
 
   useEffect(() => {
     if (initialAuthModal) {
@@ -255,15 +255,15 @@ function Home({
     }
   }, [initialAuthModal])
 
-  const handleOpenAuth = (mode: 'login' | 'signup') => {
-    setAuthModalMode(mode)
+  const handleOpenAuth = () => {
+    setAuthModalMode(true)
   }
 
   const handleProtectedAction = (targetPath: string) => {
     if (isAuthenticated && user) {
       navigate(targetPath)
     } else {
-      setAuthModalMode('login')
+      setAuthModalMode(true)
     }
   }
 
@@ -290,8 +290,7 @@ function Home({
           <div className="landing-nav-links">
             <Link to="/dashboard" className="active-nav">Dashboard</Link>
             <a href="#usps">Features</a>
-            <a href="#community">Community</a>
-          </div>
+                      </div>
 
           <div className="header-right">
             <button
@@ -312,7 +311,7 @@ function Home({
               </button>
             ) : (
               <button
-                onClick={() => handleOpenAuth('login')}
+                onClick={() => handleOpenAuth()}
                 className="btn-red"
                 style={{ padding: '8px 18px', fontSize: '0.84rem' }}
               >
@@ -774,96 +773,15 @@ function Home({
       </section>
 
 
-      {/* Member Registration Section (Matching Screenshot 2 EXACTLY) */}
-      <section id="community" className="community-section">
-        <div className="community-inner">
-          <div className="community-left">
-            <h2>
-              Join the <span className="text-red-highlight">Community</span>
-            </h2>
-            <p>
-              You've been invited to the exclusive Unicare Registry. Complete your identification to gain access.
-            </p>
-            <div className="community-illus-box">
-              <img src="/libraria_community_style.svg" onError={(e) => { (e.target as HTMLImageElement).src = '/community_illus.png' }} alt="Community Member Identification Illustration" />
-            </div>
-          </div>
+      
 
-          <div className="member-card">
-            <div className="member-card-head">
-              <ShieldCheck size={22} color="var(--red)" />
-              <span>Member Invitation</span>
-            </div>
-
-            <button className="google-btn" onClick={() => handleOpenAuth('signup')}>
-              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.2 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.6 7.4C.6 9.4 0 11.6 0 14s.6 4.6 1.6 6.6l3.7-2.9c-.2-.7-.4-1.5-.4-2.9z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.2-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z"/></svg>
-              Sign up with Google (Recommended)
-            </button>
-
-            <div className="or-divider">OR MANUAL REGISTRY</div>
-
-            <form className="reg-form" onSubmit={e => { e.preventDefault(); handleOpenAuth('signup'); }}>
-              <div className="reg-field">
-                <label>Full Institutional Name</label>
-                <input placeholder="e.g. Rahul Sharma" required />
-              </div>
-
-              <div className="form-grid-2">
-                <div className="reg-field">
-                  <label>Email Address</label>
-                  <input type="email" placeholder="email@domain.com" required />
-                </div>
-                <div className="reg-field">
-                  <label>Batch</label>
-                  <select>
-                    <option>Uniques 1.0</option>
-                    <option>Faculty / Admin</option>
-                    <option>Maintenance Tech</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-grid-2">
-                <div className="reg-field">
-                  <label>Phone Number</label>
-                  <input placeholder="+91..." required />
-                </div>
-                <div className="reg-field">
-                  <label>Roll Number (Required)</label>
-                  <input placeholder="Required for ID" required />
-                </div>
-              </div>
-
-              <div className="reg-field">
-                <label>Secure Password</label>
-                <input type="password" placeholder="••••••••" required />
-              </div>
-
-              <button type="submit" className="submit-reg-btn">Complete Registration</button>
-
-              <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '0.85rem', color: 'var(--txt-muted)' }}>
-                Already a member?{' '}
-                <button
-                  type="button"
-                  onClick={() => handleOpenAuth('login')}
-                  style={{ background: 'none', border: 'none', color: 'var(--red)', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-                >
-                  Sign In instead
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <Footer onOpenAuth={handleOpenAuth} />
+      <Footer onOpenAuth={() => handleOpenAuth()} />
 
       <AuthModal
-        isOpen={!!authModalMode}
-        initialMode={authModalMode || 'login'}
+        isOpen={authModalMode}
         onClose={() => {
-          setAuthModalMode(null)
-          if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
+          setAuthModalMode(false)
+          if (window.location.pathname === '/login') {
             window.history.replaceState(null, '', '/')
           }
         }}
@@ -941,9 +859,8 @@ export default function App() {
         <div className="global-ambient-glow" aria-hidden="true" />
         <Routes>
           <Route path="/" element={<Home records={records} theme={theme} toggleTheme={toggleTheme} />} />
-          <Route path="/login" element={<Home records={records} theme={theme} toggleTheme={toggleTheme} initialAuthModal="login" />} />
-          <Route path="/signup" element={<Home records={records} theme={theme} toggleTheme={toggleTheme} initialAuthModal="signup" />} />
-          <Route path="/*" element={
+          <Route path="/login" element={<Home records={records} theme={theme} toggleTheme={toggleTheme} initialAuthModal={true} />} />
+                    <Route path="/*" element={
             <ProtectedRoute>
               <Portal records={records} setRecords={setRecords} assets={assets} setAssets={setAssets} theme={theme} toggleTheme={toggleTheme} />
             </ProtectedRoute>
@@ -1891,28 +1808,24 @@ function Analytics() {
 
 function AuthModal({ 
   isOpen, 
-  onClose, 
-  initialMode = 'login' 
+  onClose
 }: { 
   isOpen: boolean
   onClose: () => void
-  initialMode?: 'login' | 'signup' 
 }) {
-  const { login, signup, isAuthenticated, user, error, clearError, loading } = useAuth()
+  const { login, isAuthenticated, user, error, clearError, loading } = useAuth()
   const navigate = useNavigate()
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode)
-  const [name, setName] = useState('')
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [selectedRole, setSelectedRole] = useState('student')
+  
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
   useEffect(() => {
-    setMode(initialMode)
     setFormError(null)
     clearError()
-  }, [initialMode, isOpen, clearError])
+  }, [isOpen, clearError])
 
   if (!isOpen) return null
 
@@ -1921,38 +1834,21 @@ function AuthModal({
     setFormError(null)
     clearError()
 
-    if (mode === 'login') {
-      if (!email.trim() || !password.trim()) {
-        setFormError('Please enter both email and password')
-        return
-      }
-      const success = await login(email.trim(), password)
-      if (success) {
-        onClose()
-        const targetRole = user?.role || selectedRole || 'student'
-        navigate(getDefaultDashboard(targetRole), { replace: true })
-      }
-    } else {
-      if (!name.trim() || !email.trim() || !password.trim()) {
-        setFormError('All fields are required')
-        return
-      }
-      if (password.length < 6) {
-        setFormError('Password must be at least 6 characters')
-        return
-      }
-      const success = await signup(name.trim(), email.trim(), password, selectedRole)
-      if (success) {
-        onClose()
-        navigate(getDefaultDashboard(selectedRole), { replace: true })
-      }
+    if (!email.trim() || !password.trim()) {
+      setFormError('Please enter both email and password')
+      return
     }
-  }
-
-  const toggleMode = () => {
-    setMode(prev => (prev === 'login' ? 'signup' : 'login'))
-    setFormError(null)
-    clearError()
+    const success = await login(email.trim(), password)
+    if (success) {
+      onClose()
+      const targetRole = user?.role || 'student'
+      const roleMap: Record<string, string> = {
+        'admin': '/dashboard',
+        'technician': '/inventory',
+        'student': '/report'
+      }
+      navigate(roleMap[targetRole] || '/', { replace: true })
+    }
   }
 
   const displayError = formError || error
@@ -1964,7 +1860,6 @@ function AuthModal({
           <X size={18} />
         </button>
 
-        {/* Brand Header */}
         <div className="auth-brand">
           <div className="auth-brand-link">
             <div className="auth-brand-icon">
@@ -1976,18 +1871,9 @@ function AuthModal({
           </div>
         </div>
 
-        {/* Title */}
-        <h1 className="auth-title">
-          {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-        </h1>
-        <p className="auth-subtitle">
-          {mode === 'login'
-            ? 'Sign in to access your maintenance dashboard'
-            : 'Register to join the campus maintenance system'
-          }
-        </p>
+        <h1 className="auth-title">Welcome Back</h1>
+        <p className="auth-subtitle">Sign in to access your maintenance dashboard</p>
 
-        {/* Error Display */}
         {displayError && (
           <div className="auth-error">
             <CircleAlert size={16} />
@@ -1995,128 +1881,62 @@ function AuthModal({
           </div>
         )}
 
-        {/* Auth Form */}
         <form onSubmit={handleSubmit} className="auth-form">
-          {mode === 'signup' && (
-            <div className="auth-field">
-              <label htmlFor="auth-name">Full Name</label>
-              <div className="auth-input-wrap">
-                <Users size={16} className="auth-input-icon" />
-                <input
-                  id="auth-name"
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Rahul Sharma"
-                  autoComplete="name"
-                />
-              </div>
-            </div>
-          )}
-
           <div className="auth-field">
-            <label htmlFor="auth-email">Email Address</label>
+            <label>Email Address</label>
             <div className="auth-input-wrap">
-              <MapPin size={16} className="auth-input-icon" />
+              <Mail size={16} className="auth-input-icon" />
               <input
-                id="auth-email"
                 type="email"
+                placeholder="you@institution.edu"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@sviet.ac.in"
+                required
                 autoComplete="email"
               />
             </div>
           </div>
 
           <div className="auth-field">
-            <label htmlFor="auth-password">Password</label>
+            <label>Password</label>
             <div className="auth-input-wrap">
-              <ShieldCheck size={16} className="auth-input-icon" />
+              <Lock size={16} className="auth-input-icon" />
               <input
-                id="auth-password"
                 type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                required
+                autoComplete="current-password"
               />
-              <button
-                type="button"
-                className="auth-password-toggle"
+              <button 
+                type="button" 
+                className="pwd-toggle"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            
+            <div className="auth-field-extras">
+              <a href="#" className="forgot-pwd" onClick={e => e.preventDefault()}>Forgot password?</a>
+            </div>
           </div>
 
-          {mode === 'signup' && (
-            <div className="auth-field">
-              <label htmlFor="auth-role">Account Role</label>
-              <div className="auth-role-selector">
-                {[
-                  { value: 'student', label: 'Student', icon: GraduationCap, desc: 'Report issues & track tickets' },
-                  { value: 'technician', label: 'Technician', icon: Wrench, desc: 'Resolve tickets & manage repairs' },
-                  { value: 'admin', label: 'Admin', icon: LayoutDashboard, desc: 'Full system control & analytics' },
-                ].map(r => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    className={`auth-role-option ${selectedRole === r.value ? 'selected' : ''}`}
-                    onClick={() => setSelectedRole(r.value)}
-                  >
-                    <r.icon size={20} />
-                    <span className="auth-role-label">{r.label}</span>
-                    <span className="auth-role-desc">{r.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="auth-submit-btn"
-            disabled={loading}
-          >
-            {loading ? (
-              <><Loader2 size={18} className="auth-spinner" /> Processing...</>
-            ) : mode === 'login' ? (
-              <><LogIn size={18} /> Sign In</>
-            ) : (
-              <><UserPlus size={18} /> Create Account</>
-            )}
+          <button type="submit" className="auth-submit" disabled={loading}>
+            {loading ? 'Processing...' : 'Sign In'}
           </button>
+          
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <button type="button" onClick={() => { setEmail('ajaydinodiya2007@gmail.com'); setPassword('admin123'); }} style={{ background: 'none', border: 'none', color: 'var(--txt-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }}>
+              Fill Mock Admin Login
+            </button>
+          </div>
         </form>
-
-        {/* Toggle Login/Signup */}
-        <div className="auth-toggle">
-          {mode === 'login' ? (
-            <>
-              Don't have an account?{' '}
-              <button type="button" onClick={toggleMode} className="auth-toggle-link">Create one</button>
-            </>
-          ) : (
-            <>
-              Already have an account?{' '}
-              <button type="button" onClick={toggleMode} className="auth-toggle-link">Sign in</button>
-            </>
-          )}
-        </div>
       </div>
     </div>
   )
 }
 
-function Auth({ mode }: { mode: 'login' | 'signup' }) {
-  const navigate = useNavigate()
-  return (
-    <AuthModal
-      isOpen={true}
-      initialMode={mode}
-      onClose={() => navigate('/', { replace: true })}
-    />
-  )
-}
+

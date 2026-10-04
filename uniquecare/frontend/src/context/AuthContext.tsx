@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { loginApi, signupApi, getMeApi } from '../services/api'
+import { loginApi, getMeApi } from '../services/api'
 
 /* ── Types ─────────────────────────────────────────────────── */
 export interface AuthUser {
@@ -20,7 +20,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   displayRole: DisplayRole
   login: (email: string, password: string) => Promise<boolean>
-  signup: (name: string, email: string, password: string, role?: string) => Promise<boolean>
+  
   logout: () => void
   clearError: () => void
 }
@@ -171,36 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const signup = useCallback(async (name: string, email: string, password: string, role?: string): Promise<boolean> => {
-    setError(null)
-    setLoading(true)
-
-    try {
-      const result = await signupApi(name, email, password, role)
-      if (!result.success) {
-        setError(result.message || 'Registration failed')
-        setLoading(false)
-        return false
-      }
-
-      const authUser: AuthUser = {
-        _id: result.data._id,
-        name: result.data.name,
-        email: result.data.email,
-        role: result.data.role,
-        token: result.data.token,
-      }
-
-      setUser(authUser)
-      saveToStorage(authUser)
-      setLoading(false)
-      return true
-    } catch (err: any) {
-      setError(err.message || 'Network error — is the backend running?')
-      setLoading(false)
-      return false
-    }
-  }, [])
+  
 
   const logout = useCallback(() => {
     setUser(null)
@@ -217,7 +188,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!user,
     displayRole: user ? mapToDisplayRole(user.role) : 'Student',
     login,
-    signup,
     logout,
     clearError,
   }

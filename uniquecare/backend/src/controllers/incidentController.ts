@@ -7,19 +7,32 @@ import { AppError } from '../utils/AppError';
 import { sendPushNotificationToTechnicians } from '../services/pushService';
 
 export const createIncident = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { assetId, description, mediaUrls } = req.body;
-  if (!assetId || !description) {
-    return next(new AppError('Missing required fields: assetId, description', 400));
+  const { assetId, tagId, title, description, mediaUrls, location, category } = req.body;
+  if (!description && !title) {
+    return next(new AppError('Missing required fields: description or title', 400));
   }
 
-  const asset = await Asset.findById(assetId);
+  let asset = null;
+  if (assetId) {
+    asset = await Asset.findById(assetId);
+  } else if (tagId) {
+    asset = await Asset.findOne({ tagId });
+  }
+
+  // Auto-create a generic asset if not found (useful for general issues reported without a specific asset tag)
   if (!asset) {
-    return next(new AppError('Asset not found', 404));
+    asset = await Asset.create({
+      tagId: tagId || `GEN-${Math.floor(Math.random() * 10000)}`,
+      name: title || 'General Facility Issue',
+      location: location || 'Campus',
+      category: category || 'General',
+      healthStatus: 'degraded'
+    });
   }
 
   const incident = await Incident.create({
-    assetId,
-    description,
+    assetId: asset._id,
+    description: description || title,
     mediaUrls: mediaUrls || [],
     reportedBy: req.user._id,
     status: 'Open'
@@ -44,7 +57,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
   }
 
   const incidents = await Incident.find(filter)
-    .populate('assetId', 'name tagId healthStatus')
+    .populate('assetId', 'name tagId healthStatus location category')
     .populate('reportedBy', 'name email')
     .sort('-createdAt');
 
@@ -56,7 +69,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
 
 export const getIncidentById = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
   const incident = await Incident.findById(req.params.id)
-    .populate('assetId', 'name tagId healthStatus')
+    .populate('assetId', 'name tagId healthStatus location category')
     .populate('reportedBy', 'name email')
     .populate('assignedTo', 'name email')
     .populate('activityLogs.createdBy', 'name role');

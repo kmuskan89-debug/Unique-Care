@@ -19,19 +19,23 @@ export interface AuthResponse {
   success: boolean;
   message?: string;
   data: {
-    _id: string;
-    name: string;
-    email: string;
-    role: 'student' | 'technician' | 'admin' | 'lab_admin';
+    user: {
+      _id: string;
+      name: string;
+      email: string;
+      role: 'student' | 'technician' | 'admin' | 'lab_admin';
+    };
     token: string;
   };
 }
 
 export interface MeResponse {
-  _id: string;
-  name: string;
-  email: string;
-  role: 'student' | 'technician' | 'admin' | 'lab_admin';
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    role: 'student' | 'technician' | 'admin' | 'lab_admin';
+  };
 }
 
 /* ── Auth Token Helper ─────────────────────────────────────── */
@@ -112,7 +116,7 @@ export async function getMeApi(token: string): Promise<MeResponse | null> {
 
 export async function fetchIssuesFromApi(): Promise<IssueRecord[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/issues`, {
+    const res = await fetch(`${API_BASE}/incidents`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) return null;
@@ -128,12 +132,18 @@ export async function fetchIssuesFromApi(): Promise<IssueRecord[] | null> {
 }
 
 export async function createIssueApi(issue: Partial<IssueRecord>): Promise<IssueRecord | null> {
-  const token = localStorage.getItem('token');
   try {
-    const res = await fetch(`${API_BASE}/issues`, {
+    const payload = {
+      title: issue.title,
+      description: issue.description || issue.title,
+      location: issue.location,
+      category: issue.category,
+      tagId: issue.id
+    };
+    const res = await fetch(`${API_BASE}/incidents`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(issue),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -147,7 +157,7 @@ export async function createIssueApi(issue: Partial<IssueRecord>): Promise<Issue
 }
 
 export const fetcher = async (url: string) => {
-  const token = localStorage.getItem("token") || "";
+  const token = getStoredToken() || "";
   const headers: HeadersInit = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -167,7 +177,6 @@ export const fetcher = async (url: string) => {
 };
 
 export async function updateIssueStatusApi(id: string, status: string): Promise<boolean> {
-  const token = localStorage.getItem('token');
   try {
     const res = await fetch(`${API_BASE}/incidents/${id}/status`, {
       method: 'PATCH',

@@ -842,7 +842,19 @@ export default function App() {
   const { data: recordsData } = useSWR('/incidents', fetcher, { refreshInterval: 15000 })
   const { data: assetsData } = useSWR('/assets', fetcher, { refreshInterval: 15000 })
 
-  const records = recordsData || []
+  const records = (recordsData || []).map((inc: any) => ({
+    id: inc._id,
+    title: inc.assetId?.name || inc.description?.substring(0, 20) || 'Unknown Issue',
+    location: inc.assetId?.location || 'Campus',
+    priority: 'Medium', // Default for now
+    status: inc.status || 'Open',
+    assignee: inc.assignedTo?.name || 'Unassigned',
+    reporter: inc.reportedBy?.name || 'Unknown',
+    date: new Date(inc.createdAt).toLocaleDateString(),
+    time: new Date(inc.createdAt).toLocaleTimeString(),
+    description: inc.description || '',
+    category: inc.assetId?.category || 'General'
+  }))
   const assets = assetsData || []
 
   const setRecords = () => {}

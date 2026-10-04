@@ -4,6 +4,8 @@ export interface IAsset extends Document {
   tagId: string;
   name: string;
   healthStatus: 'healthy' | 'degraded' | 'broken';
+  location?: string;
+  category?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +19,8 @@ const assetSchema = new Schema<IAsset>(
       enum: ['healthy', 'degraded', 'broken'],
       default: 'healthy',
     },
+    location: { type: String, default: 'Campus' },
+    category: { type: String, default: 'General' },
   },
   { timestamps: true }
 );

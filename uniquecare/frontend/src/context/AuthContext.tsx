@@ -101,12 +101,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const result = await getMeApi(stored.token)
-        if (result) {
+        if (result && result.user) {
           const restored: AuthUser = {
-            _id: result._id,
-            name: result.name,
-            email: result.email,
-            role: result.role,
+            _id: result.user._id,
+            name: result.user.name,
+            email: result.user.email,
+            role: result.user.role,
             token: stored.token,
           }
           setUser(restored)
@@ -153,10 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const authUser: AuthUser = {
-        _id: result.data._id,
-        name: result.data.name,
-        email: result.data.email,
-        role: result.data.role,
+        _id: result.data.user._id,
+        name: result.data.user.name,
+        email: result.data.user.email,
+        role: result.data.user.role,
         token: result.data.token,
       }
 

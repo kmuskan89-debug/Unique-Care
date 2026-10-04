@@ -6,6 +6,8 @@ import {
   Clock3, Target, Repeat
 } from 'lucide-react'
 import type { IssueRecord } from '../types'
+import useSWR from 'swr'
+import { fetcher } from '../services/api'
 
 
 interface AdminDashboardProps {
@@ -14,6 +16,8 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) {
+  const { data: analytics } = useSWR('/analytics', fetcher, { refreshInterval: 15000 })
+
   const navigate = useNavigate()
   const [chartPeriod, setChartPeriod] = useState<'7d' | '30d' | '6m' | '1y'>('6m')
 
@@ -419,14 +423,14 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
             <div className="adm-perf-item">
               <div className="adm-perf-icon"><Target size={16} /></div>
               <span className="adm-perf-label">SLA Compliance</span>
-              <span className="adm-perf-value">92%</span>
-              <div className="adm-perf-bar"><div className="adm-perf-bar-fill" style={{ width: '92%' }} /></div>
+              <span className="adm-perf-value">{analytics ? Math.round(analytics.slaCompliance) : 92}%</span>
+              <div className="adm-perf-bar"><div className="adm-perf-bar-fill" style={{ width: `${analytics ? Math.round(analytics.slaCompliance) : 92}%` }} /></div>
             </div>
             <div className="adm-perf-item">
               <div className="adm-perf-icon"><Repeat size={16} /></div>
-              <span className="adm-perf-label">Repeat Issues</span>
-              <span className="adm-perf-value">8%</span>
-              <span className="adm-perf-trend"><TrendingDown size={11} /> 3%</span>
+              <span className="adm-perf-label">Resolved Issues</span>
+              <span className="adm-perf-value">{analytics ? analytics.resolvedIncidents : 42}</span>
+              <span className="adm-perf-trend"><TrendingUp size={11} /> Total</span>
             </div>
           </div>
         </div>

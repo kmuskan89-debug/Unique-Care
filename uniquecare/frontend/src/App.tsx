@@ -23,7 +23,7 @@ import { Footer } from './components/shared/Footer'
 import { ProtectedRoute, getDefaultDashboard } from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import type { DisplayRole } from './context/AuthContext'
-import { fetchIssuesFromApi } from './services/api'
+import { fetchIssuesFromApi, updateIncidentStatusApi } from './services/api'
 
 import useSWR from 'swr'
 import { fetcher } from './services/api'
@@ -839,7 +839,7 @@ export default function App() {
     localStorage.setItem('ucare-theme', theme)
   }, [theme])
 
-  const { data: recordsData } = useSWR('/incidents', fetcher, { refreshInterval: 15000 })
+  const { data: recordsData, mutate: mutateRecords } = useSWR('/incidents', fetcher, { refreshInterval: 15000 })
   const { data: assetsData } = useSWR('/assets', fetcher, { refreshInterval: 15000 })
 
   const records = (recordsData || []).map((inc: any) => ({
@@ -853,11 +853,14 @@ export default function App() {
     date: new Date(inc.createdAt).toLocaleDateString(),
     time: new Date(inc.createdAt).toLocaleTimeString(),
     description: inc.description || '',
-    category: inc.assetId?.category || 'General'
+    category: inc.assetId?.category || 'General',
+    activityLogs: inc.activityLogs || []
   }))
   const assets = assetsData || []
 
-  const setRecords = () => {}
+  const setRecords = (val: any) => {
+    mutateRecords();
+  }
   const setAssets = () => {}
 
   const toggleTheme = () => {
@@ -919,10 +922,28 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
   /** Get role label for display */
   const roleLabel = role === 'Admin' ? 'System Administrator' : role === 'Tech' ? 'Technician' : 'Student'
 
-  const handleStatusChange = (id: string, newStatus: 'Open' | 'In Progress' | 'Resolved') => {
+  const handleStatusChange = async (id: string, newStatus: 'Open' | 'In Progress' | 'Resolved') => {
+    // 1. Snapshot previous state for potential rollback
+    const previousRecords = [...records];
+    const previousSelected = selectedIssue;
+
+    // 2. Optimistic UI Update
     setRecords(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
     if (selectedIssue && selectedIssue.id === id) {
       setSelectedIssue(prev => prev ? { ...prev, status: newStatus } : null)
+    }
+
+    // 3. Network Request
+    try {
+      const success = await updateIncidentStatusApi(id, newStatus);
+      if (!success) {
+        throw new Error("API reported failure");
+      }
+    } catch (error) {
+      // 4. Rollback on failure
+      setRecords(previousRecords);
+      setSelectedIssue(previousSelected);
+      alert("Failed to update the status. Please try again.");
     }
   }
 
@@ -1180,7 +1201,7 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
           } />
           <Route path="/technician" element={
             <ProtectedRoute allowedRoles={['technician']}>
-              <TechnicianDashboard records={records} onStatusChange={handleStatusChange} onSelectIssue={setSelectedIssue} />
+              <TechnicianDashboard records={records} onStatusChange={handleStatusChange} onSelectIssue={setSelectedIssue} onRefresh={() => setRecords([])} />
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
@@ -1210,7 +1231,7 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
           } />
           <Route path="/maintenance" element={
             <ProtectedRoute allowedRoles={['technician']}>
-              <TechnicianDashboard records={records} onStatusChange={handleStatusChange} onSelectIssue={setSelectedIssue} />
+              <TechnicianDashboard records={records} onStatusChange={handleStatusChange} onSelectIssue={setSelectedIssue} onRefresh={() => setRecords([])} />
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to={getDefaultDashboard(user?.role || 'student')} replace />} />

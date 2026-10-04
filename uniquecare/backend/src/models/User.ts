@@ -6,6 +6,11 @@ export interface IUser extends Document {
   password?: string;
   role: 'student' | 'technician' | 'admin';
   carePoints: number;
+  title?: string;
+  specialty?: string;
+  status?: 'On Shift' | 'In Field' | 'On Call' | 'Off Duty';
+  phone?: string;
+  avatarColor?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +26,15 @@ const userSchema = new Schema<IUser>(
       default: 'student',
     },
     carePoints: { type: Number, default: 0 },
+    title: { type: String },
+    specialty: { type: String },
+    status: { 
+      type: String, 
+      enum: ['On Shift', 'In Field', 'On Call', 'Off Duty'],
+      default: 'On Shift'
+    },
+    phone: { type: String },
+    avatarColor: { type: String },
   },
   { timestamps: true }
 );

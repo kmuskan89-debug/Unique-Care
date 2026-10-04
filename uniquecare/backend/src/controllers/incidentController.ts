@@ -59,6 +59,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
   const incidents = await Incident.find(filter)
     .populate('assetId', 'name tagId healthStatus location category')
     .populate('reportedBy', 'name email')
+    .populate('activityLogs.createdBy', 'name role')
     .sort('-createdAt');
 
   res.status(200).json({

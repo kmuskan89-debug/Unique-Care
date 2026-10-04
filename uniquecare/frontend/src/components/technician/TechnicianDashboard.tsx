@@ -4,6 +4,7 @@ import {
   Search, Filter, MessageSquare, Zap, Package, User,
   MapPin, Calendar, ArrowUpRight
 } from 'lucide-react'
+import { addRepairLogApi } from '../../services/api'
 import type { IssueRecord } from '../../services/api'
 
 interface Technician {
@@ -48,9 +49,10 @@ interface TechnicianDashboardProps {
   records: IssueRecord[]
   onStatusChange: (id: string, newStatus: 'Open' | 'In Progress' | 'Resolved') => void
   onSelectIssue: (issue: IssueRecord) => void
+  onRefresh?: () => void
 }
 
-export function TechnicianDashboard({ records, onStatusChange, onSelectIssue }: TechnicianDashboardProps) {
+export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, onRefresh }: TechnicianDashboardProps) {
   const [selectedTech, setSelectedTech] = useState<Technician>(technicianRoster[0])
   const [filterStatus, setFilterStatus] = useState<'All' | 'Open' | 'In Progress' | 'Resolved'>('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -59,12 +61,6 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue }: 
   // Comment note modal state
   const [noteModalIssue, setNoteModalIssue] = useState<IssueRecord | null>(null)
   const [techNote, setTechNote] = useState('')
-  const [logs, setLogs] = useState<Record<string, Array<{ author: string; text: string; time: string }>>>({
-    '2024BTCS205': [
-      { author: 'Prof. Sharma', text: 'Reported HDMI sync loss during lab session.', time: '07:45 PM' },
-      { author: 'Er. R. Mehta', text: 'Dispatched to Thinkspace. Replaced damaged HDMI connector cable.', time: '08:10 PM' }
-    ]
-  })
 
   // Filter jobs based on search & status filter
   const filteredJobs = records.filter(r => {
@@ -83,18 +79,19 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue }: 
   const openJobs = records.filter(r => r.status === 'Open').length
   const resolvedJobs = records.filter(r => r.status === 'Resolved').length
 
-  const handleAddTechNote = (e: React.FormEvent) => {
+  const handleAddTechNote = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!noteModalIssue || !techNote.trim()) return
 
     const issueId = noteModalIssue.id
-    const existing = logs[issueId] || []
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+    const success = await addRepairLogApi(issueId, techNote)
+    
+    if (success) {
+      if (onRefresh) onRefresh()
+    } else {
+      alert("Failed to add repair log. Please try again.")
+    }
 
-    setLogs({
-      ...logs,
-      [issueId]: [...existing, { author: selectedTech.name, text: techNote, time: now }]
-    })
     setTechNote('')
     setNoteModalIssue(null)
   }

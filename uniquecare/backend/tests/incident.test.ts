@@ -112,4 +112,51 @@ describe('Incident Endpoints', () => {
       expect(res.body.data.incident.status).toBe('Resolved');
     });
   });
+  describe('POST /api/incidents/:id/logs', () => {
+    it('should add an activity log to the incident', async () => {
+      expect.assertions(3);
+      const incident = await Incident.create({
+        assetId: asset._id,
+        description: 'Test incident',
+        reportedBy: user._id,
+        status: 'Open'
+      });
+
+      const res = await request(app)
+        .post(`/api/incidents/${incident._id}/logs`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          content: 'Fixed the projector bulb'
+        });
+      
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.incident.activityLogs[0].message).toBe('Fixed the projector bulb');
+    });
+  });
+
+  describe('GET /api/incidents', () => {
+    it('should populate activityLogs.createdBy', async () => {
+      expect.assertions(3);
+      const incident = await Incident.create({
+        assetId: asset._id,
+        description: 'Test incident',
+        reportedBy: user._id,
+        status: 'Open',
+        activityLogs: [{
+          message: 'Initial check',
+          createdBy: admin._id
+        }]
+      });
+
+      const res = await request(app)
+        .get('/api/incidents')
+        .set('Authorization', `Bearer ${adminToken}`);
+      
+      expect(res.status).toBe(200);
+      const fetchedIncident = res.body.data.find((i: any) => i._id === incident._id.toString());
+      expect(fetchedIncident.activityLogs[0].message).toBe('Initial check');
+      expect(fetchedIncident.activityLogs[0].createdBy.name).toBe('Test Admin');
+    });
+  });
 });

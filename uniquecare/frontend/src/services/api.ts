@@ -13,6 +13,12 @@ export interface IssueRecord {
   time?: string;
   description?: string;
   category?: string;
+  activityLogs?: Array<{
+    _id?: string;
+    message: string;
+    createdAt: string;
+    createdBy: { name: string; role: string };
+  }>;
 }
 
 export interface AuthResponse {
@@ -176,15 +182,30 @@ export const fetcher = async (url: string) => {
   return data.data;
 };
 
-export async function updateIssueStatusApi(id: string, status: string): Promise<boolean> {
+export async function updateIncidentStatusApi(id: string, status: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/incidents/${id}/status`, {
+    const res = await fetch(`${API_BASE}/incidents/${id}`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status }),
     });
     return res.ok;
+  } catch (error) {
+    console.error("Failed to update status", error);
+    return false;
+  }
+}
+
+export async function addRepairLogApi(issueId: string, content: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/incidents/${issueId}/logs`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content }),
+    });
+    return res.ok;
   } catch (e) {
+    console.error("Failed to add repair log", e);
     return false;
   }
 }

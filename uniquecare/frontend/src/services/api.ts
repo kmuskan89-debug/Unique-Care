@@ -9,6 +9,7 @@ export interface IssueRecord {
   status: 'Open' | 'In Progress' | 'Resolved';
   assignee: string;
   reporter: string;
+  ticketId?: string;
   date: string;
   time?: string;
   description?: string;
@@ -209,3 +210,88 @@ export async function addRepairLogApi(issueId: string, content: string): Promise
     return false;
   }
 }
+
+export async function fetchAssetsApi(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE}/assets`, { headers: getAuthHeaders() });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.success ? data.data : [];
+  } catch {
+    return [];
+  }
+}
+
+export interface Technician {
+  id: string;
+  name: string;
+  title: string;
+  specialty: string;
+  status: 'On Shift' | 'In Field' | 'On Call' | 'Off Duty';
+  phone: string;
+  activeJobsCount: number;
+  avatarColor: string;
+}
+
+export interface SparePart {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+  unit: string;
+  status: 'In Stock' | 'Low Stock' | 'Reorder';
+}
+
+export async function fetchTechniciansApi(): Promise<Technician[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/users/technicians`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return null;
+  } catch (e) {
+    console.error('Failed to fetch technicians', e);
+    return null;
+  }
+}
+
+export async function fetchInventoryApi(): Promise<SparePart[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/inventory`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return null;
+  } catch (e) {
+    console.error('Failed to fetch inventory', e);
+    return null;
+  }
+}
+
+
+async function fetchMetadata<T>(name: string): Promise<T> {
+  const res = await fetch(`${API_BASE}/metadata/${name}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error(`Failed to load ${name} (${res.status})`);
+  const body = await res.json();
+  if (!body || !body.success || body.data === undefined || body.data === null) {
+    throw new Error(`Failed to load ${name}`);
+  }
+  return body.data as T;
+}
+
+export const fetchLocationsApi = (): Promise<string[]> => fetchMetadata<string[]>('locations');
+export const fetchCategoriesApi = (): Promise<{value: string, label: string}[]> => fetchMetadata('categories');
+export const fetchPrioritiesApi = (): Promise<{value: string, label: string}[]> => fetchMetadata('priorities');
+export const fetchStatusesApi = (): Promise<string[]> => fetchMetadata<string[]>('statuses');
+export const fetchFaqsApi = (): Promise<{question: string, answer: string}[]> => fetchMetadata('faqs');
+export const fetchStudentProfileApi = (): Promise<{batch: string, batchCode: string, branch: string, rollNo: string}> => fetchMetadata('student-profile');
+export async function markNotificationsReadApi(): Promise<boolean> { try { const res = await fetch(`${API_BASE}/notifications/mark-read`, { method: "PUT", headers: getAuthHeaders() }); return res.ok; } catch { return false; } }
+export async function markNotificationReadApi(id: string): Promise<boolean> { try { const res = await fetch(`${API_BASE}/notifications/${id}/mark-read`, { method: "PUT", headers: getAuthHeaders() }); return res.ok; } catch { return false; } }

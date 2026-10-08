@@ -1,11 +1,22 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { INSTITUTION_NAME } from '../../config/branding'
+import useSWR from 'swr'
 import {
   QrCode, Plus, AlertTriangle, CheckCircle2, Clock3, Search, Filter,
   ShieldCheck, Zap, User, Camera, Upload, RefreshCw, MessageSquare,
   Monitor, Sparkles, HelpCircle, Check, FileText, Calendar, X
 } from 'lucide-react'
 import type { IssueRecord } from '../../services/api'
-import { createIssueApi } from '../../services/api'
+import { 
+  createIssueApi, 
+  fetcher,
+  fetchLocationsApi,
+  fetchCategoriesApi,
+  fetchPrioritiesApi,
+  fetchFaqsApi,
+  fetchStudentProfileApi
+} from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 
 interface StudentDashboardProps {
   records: IssueRecord[]
@@ -23,26 +34,49 @@ interface WorkstationNode {
   specs: string
 }
 
-const mockWorkstations: WorkstationNode[] = [
-  { id: 'WS-TS-01', name: 'Thinkspace PC Node 01', location: 'Thinkspace Lab', category: 'Desktop & Display', status: 'Operational', lastChecked: '10 min ago', specs: 'Core i7 · 32GB RAM · RTX 3060' },
-  { id: 'WS-TS-04', name: 'Thinkspace HDMI Display 04', location: 'Thinkspace Lab', category: 'AV Equipment', status: 'Faulty', lastChecked: '1 hour ago', specs: '4K Wall Display Panel' },
-  { id: 'WS-LS-02', name: 'Launchspace BenQ Projector', location: 'Launchspace', category: 'AV Equipment', status: 'Degraded', lastChecked: '30 min ago', specs: 'Dual HDMI Overhead Ceiling Unit' },
-  { id: 'WS-WS-14', name: 'Workspace Gigabit Switch #2', location: 'Workspace', category: 'Networking', status: 'Operational', lastChecked: '5 min ago', specs: 'Cisco 24-Port Switch' },
-]
-
 export function StudentDashboard({ records, onAddRecord, onSelectIssue }: StudentDashboardProps) {
+  const { user: authUser } = useAuth()
+  
   // Student Profile State with custom uploaded picture
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     return localStorage.getItem('ucare-student-avatar') || null
   })
 
+  const currentUser = authUser || { name: 'Student', email: 'student@example.com' };
+
+  const { data: studentProfileData, error: profileError } = useSWR('/metadata/student-profile', fetchStudentProfileApi)
+  
   const student = {
-    name: 'Vishwajeet Kumar',
-    rollNo: '2024BTCS205',
-    batch: 'The Uniques 3.0',
-    batchCode: '2024BTCS',
-    branch: 'B.Tech Computer Science & Engineering',
+    name: currentUser.name || 'Student',
+    rollNo: studentProfileData?.rollNo || '—',
+    batch: studentProfileData?.batch || '—',
+    batchCode: studentProfileData?.batchCode || '—',
+    branch: studentProfileData?.branch || '—',
   }
+
+
+  const { data: assets } = useSWR('/assets', fetcher)
+  const activeWorkstations: WorkstationNode[] = assets ? assets.map((a: any) => ({
+    id: a.tagId || a.id || a._id || 'Unknown',
+    name: a.name || 'Unknown Asset',
+    location: a.location || 'Unknown',
+    category: a.category || 'Asset',
+    status: a.status || 'Operational',
+    lastChecked: (() => {
+      const raw = a.updatedAt || a.lastServiceDate
+      const d = raw ? new Date(raw) : null
+      return d && !isNaN(d.getTime()) ? d.toLocaleDateString() : '—'
+    })(),
+    specs: a.specs || a.description || 'Standard Spec'
+  })) : []
+
+  const { data: locations = [], error: locationsError } = useSWR('/metadata/locations', fetchLocationsApi)
+  const { data: categories = [], error: categoriesError } = useSWR('/metadata/categories', fetchCategoriesApi)
+  const { data: priorities = [], error: prioritiesError } = useSWR('/metadata/priorities', fetchPrioritiesApi)
+  const { data: faqs = [], error: faqsError } = useSWR('/metadata/faqs', fetchFaqsApi)
+  const metaError = profileError || locationsError || categoriesError || prioritiesError
+  const metaLoading = !metaError && (locations.length === 0 || categories.length === 0 || priorities.length === 0)
+
 
   // Profile image upload handler
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -70,9 +104,12 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
 
   // Quick Report Form State
   const [title, setTitle] = useState('')
-  const [location, setLocation] = useState('Thinkspace Lab')
-  const [category, setCategory] = useState('Desktop & Display')
-  const [priority, setPriority] = useState<'Critical' | 'High' | 'Medium' | 'Low'>('High')
+  const [location, setLocation] = useState('')
+  const [category, setCategory] = useState('')
+  const [priority, setPriority] = useState<'Critical' | 'High' | 'Medium' | 'Low'>('' as any)
+  useEffect(() => { if (!location && locations.length) setLocation(locations[0]) }, [locations, location])
+  useEffect(() => { if (!category && categories.length) setCategory(categories[0].value) }, [categories, category])
+  useEffect(() => { if (!priority && priorities.length) setPriority(priorities[0].value as any) }, [priorities, priority])
   const [description, setDescription] = useState('')
   const [scannedCode, setScannedCode] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -85,23 +122,29 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Filter student's tickets
+  const isMineTicket = (r: IssueRecord) => {
+    const reporterLower = r.reporter.toLowerCase();
+    return reporterLower.includes(student.name.toLowerCase()) || 
+           reporterLower.includes(student.rollNo.toLowerCase()) || 
+           r.reporter.includes(student.batchCode);
+  };
+
   const studentTickets = records.filter(r => {
-    const isMine = r.reporter.toLowerCase().includes('vishwajeet') || r.id === student.rollNo || r.reporter.toLowerCase().includes('student') || r.reporter.includes(student.batchCode)
-    if (!isMine) return false
+    if (!isMineTicket(r)) return false;
 
     const matchesStatus = filterStatus === 'All' || r.status === filterStatus
     const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.ticketId || r.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.location.toLowerCase().includes(searchQuery.toLowerCase())
 
     return matchesStatus && matchesSearch
   })
 
   // Counts
-  const totalCount = records.filter(r => r.reporter.toLowerCase().includes('vishwajeet') || r.id === student.rollNo || r.reporter.toLowerCase().includes('student') || r.reporter.includes(student.batchCode)).length
-  const inProgressCount = records.filter(r => (r.reporter.toLowerCase().includes('vishwajeet') || r.id === student.rollNo || r.reporter.toLowerCase().includes('student') || r.reporter.includes(student.batchCode)) && r.status === 'In Progress').length
-  const openCount = records.filter(r => (r.reporter.toLowerCase().includes('vishwajeet') || r.id === student.rollNo || r.reporter.toLowerCase().includes('student') || r.reporter.includes(student.batchCode)) && r.status === 'Open').length
-  const resolvedCount = records.filter(r => (r.reporter.toLowerCase().includes('vishwajeet') || r.id === student.rollNo || r.reporter.toLowerCase().includes('student') || r.reporter.includes(student.batchCode)) && r.status === 'Resolved').length
+  const totalCount = records.filter(isMineTicket).length
+  const inProgressCount = records.filter(r => isMineTicket(r) && r.status === 'In Progress').length
+  const openCount = records.filter(r => isMineTicket(r) && r.status === 'Open').length
+  const resolvedCount = records.filter(r => isMineTicket(r) && r.status === 'Resolved').length
 
   // Quick report handler
   const handleQuickReportSubmit = async (e: React.FormEvent) => {
@@ -182,7 +225,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
     setIsCameraOn(false)
   }
 
-  const handleSimulatedStationScan = (ws: WorkstationNode) => {
+  const handlePrefillFaultReport = (ws: WorkstationNode) => {
     setScannedCode(ws.id)
     setTitle(`Workstation ${ws.id} Signal Drop`)
     setLocation(ws.location)
@@ -203,7 +246,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
       />
 
       {/* ── 1. Student Hero Profile Banner ────────────────────────────── */}
-      <div className="student-hero-card reveal-on-scroll">
+      <div className="student-hero-card">
         <div className="student-hero-content">
           {/* Profile Avatar with Photo Upload Button */}
           <div className="student-avatar-ring">
@@ -227,7 +270,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
           <div className="student-details">
             <div className="student-badge-row">
               <span className="badge-role-tag">STUDENT PORTAL</span>
-              <span className="badge-role-tag" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', borderColor: 'rgba(59, 130, 246, 0.3)' }}>The Uniques 3.0</span>
+              <span className="badge-role-tag" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', borderColor: 'rgba(59, 130, 246, 0.3)' }}>{student.batch}</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' }}>
@@ -240,7 +283,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
             </div>
 
             <p className="student-meta">
-              Roll No: <strong>{student.rollNo}</strong> · {student.branch} · <span className="batch-meta-tag">Batch 2024BTCS</span>
+              Roll No: <strong>{student.rollNo}</strong> · {student.branch} · <span className="batch-meta-tag">Batch {student.batchCode}</span>
             </p>
           </div>
         </div>
@@ -371,7 +414,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
           {studentTickets.length === 0 ? (
             <div className="student-empty-state">
               <FileText size={48} color="var(--txt-dim)" />
-              <h3>No tickets found for {student.batch} ({student.rollNo})</h3>
+              <h3>No tickets found</h3>
               <p>Found 0 reported complaints matching your active filter.</p>
               <button className="btn-red" style={{ marginTop: '14px' }} onClick={() => setActiveTab('report')}>
                 <Plus size={15} /> Log Incident Report Now
@@ -387,7 +430,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
                     <div className="ticket-card-header">
                       <div>
                         <div className="ticket-tag-row">
-                          <span className="ticket-id-tag">{ticket.id}</span>
+                          <span className="ticket-id-tag">{ticket.ticketId || ticket.id}</span>
                           <span className="ticket-batch-tag">{student.batch}</span>
                           <span className="ticket-category-tag">{ticket.category || 'Desktop & Display'}</span>
                           <span className={`badge-priority ${ticket.priority.toLowerCase()}`}>{ticket.priority} Priority</span>
@@ -479,7 +522,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
                 <span style={{ fontSize: '0.72rem', color: 'var(--red-bright)', fontWeight: 700, letterSpacing: '1px' }}>
-                  SVIET CAMPUS LAB DISPATCH
+                  {INSTITUTION_NAME} CAMPUS LAB DISPATCH
                 </span>
                 <h2 style={{ fontSize: '1.4rem', color: 'var(--txt)', marginTop: '4px' }}>Log Lab Equipment Incident</h2>
                 <p style={{ color: 'var(--txt-muted)', fontSize: '0.88rem', marginTop: '4px' }}>
@@ -516,14 +559,6 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      type="button"
-                      className="btn-dark"
-                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                      onClick={() => handleSimulatedStationScan(mockWorkstations[0])}
-                    >
-                      <Sparkles size={14} color="var(--amber-txt)" /> Auto-Fill Desk Tag
-                    </button>
                     {isCameraOn ? (
                       <button type="button" className="btn-red" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={stopCamera}>
                         Close Camera
@@ -556,25 +591,24 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
                   />
                 </div>
 
+                {metaLoading && <p>Loading form options…</p>}
+                {metaError && <p role="alert">Failed to load form options. Please retry later.</p>}
                 <div className="form-grid-2">
                   <div className="reg-field">
                     <label>Lab Room Location *</label>
                     <select value={location} onChange={e => setLocation(e.target.value)}>
-                      <option value="Thinkspace Lab">Thinkspace Lab</option>
-                      <option value="Launchspace">Launchspace Audio/Visual</option>
-                      <option value="Workspace">Workspace Terminal</option>
-                      <option value="The Uniques Waiting Area">The Uniques Waiting Area</option>
+                      {locations.map((loc: string) => (
+                        <option key={loc} value={loc}>{loc}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div className="reg-field">
                     <label>Hardware Category</label>
                     <select value={category} onChange={e => setCategory(e.target.value)}>
-                      <option value="Desktop & Display">Desktop &amp; PC Hardware</option>
-                      <option value="AV Equipment">AV Equipment (Projector, Display)</option>
-                      <option value="Networking">Networking &amp; Ethernet Switches</option>
-                      <option value="Infrastructure">Infrastructure &amp; Furniture</option>
-                      <option value="HVAC">HVAC &amp; Climate Control</option>
+                      {categories.map((cat: {value: string, label: string}) => (
+                        <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -583,10 +617,9 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
                   <div className="reg-field">
                     <label>Priority Level</label>
                     <select value={priority} onChange={e => setPriority(e.target.value as any)}>
-                      <option value="Critical">Critical (Class Blocked / Immediate)</option>
-                      <option value="High">High (&lt; 24h SLA)</option>
-                      <option value="Medium">Medium (48h SLA)</option>
-                      <option value="Low">Low (Routine Upkeep)</option>
+                      {priorities.map((p: {value: string, label: string}) => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -659,7 +692,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
           </div>
 
           <div className="workstation-grid">
-            {mockWorkstations.map(ws => (
+            {activeWorkstations.map(ws => (
               <div key={ws.id} className="workstation-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <span className="ws-id">{ws.id}</span>
@@ -678,7 +711,7 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
                 <button
                   className="btn-dark"
                   style={{ width: '100%', marginTop: '14px', fontSize: '0.8rem', padding: '8px', justifyContent: 'center' }}
-                  onClick={() => handleSimulatedStationScan(ws)}
+                  onClick={() => handlePrefillFaultReport(ws)}
                 >
                   <AlertTriangle size={14} color="var(--red-bright)" /> Report Fault on {ws.id}
                 </button>
@@ -696,35 +729,15 @@ export function StudentDashboard({ records, onAddRecord, onSelectIssue }: Studen
               <ShieldCheck size={20} color="var(--red-bright)" /> Student Maintenance Guidelines &amp; SLAs
             </h2>
 
+            {faqsError && <p role="alert">Failed to load FAQs.</p>}
+            {!faqsError && faqs.length === 0 && <p>Loading…</p>}
             <div className="faq-grid">
-              <div className="faq-item">
-                <h4>⏱️ What are the SLA resolution times?</h4>
-                <p>
-                  Critical issues are assigned within <strong>30 minutes</strong>. High priority items are resolved under <strong>24 hours</strong>. Standard routine requests take up to 48 hours.
-                </p>
-              </div>
-
-              <div className="faq-item">
-                <h4>🎓 Which Student Batches are supported?</h4>
-                <p>
-                  Supports Batch 3.0 (2023BTCS), Batch 4.0 (2024BTCS), and Batch 5.0 (2025BTCS). Select your active batch in your profile header.
-                </p>
-              </div>
-
-              <div className="faq-item">
-                <h4>🏆 How do Care Points work?</h4>
-                <p>
-                  Students who report legitimate lab faults earn <strong>50 Care Points</strong> upon verified resolution by the lab technician. Top contributors earn digital badges on campus leaderboards.
-                </p>
-              </div>
-
-              <div className="faq-item">
-                <h4>📞 Urgent Technical Support</h4>
-                <p>
-                  Lab Technician Desk: <strong>Ext. 402 / SVIET Block B</strong><br />
-                  Lead Maintenance Engg: <strong>Er. R. Mehta (+91 98765-43210)</strong>
-                </p>
-              </div>
+              {faqs.map((faq: {question: string, answer: string}, idx: number) => (
+                <div className="faq-item" key={idx}>
+                  <h4>{faq.question}</h4>
+                  <p>{faq.answer}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

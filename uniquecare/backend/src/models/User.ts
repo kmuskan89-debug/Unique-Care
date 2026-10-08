@@ -11,6 +11,10 @@ export interface IUser extends Document {
   status?: 'On Shift' | 'In Field' | 'On Call' | 'Off Duty';
   phone?: string;
   avatarColor?: string;
+  batch?: string;
+  batchCode?: string;
+  branch?: string;
+  rollNo?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +39,10 @@ const userSchema = new Schema<IUser>(
     },
     phone: { type: String },
     avatarColor: { type: String },
+    batch: { type: String },
+    batchCode: { type: String },
+    branch: { type: String },
+    rollNo: { type: String },
   },
   { timestamps: true }
 );

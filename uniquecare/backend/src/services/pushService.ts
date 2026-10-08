@@ -13,14 +13,20 @@ webpush.setVapidDetails(
   vapidKeys.privateKey
 );
 
-export const sendPushNotificationToTechnicians = async (payload: object) => {
+export const sendPushNotification = async (payload: object, target: { userId?: string; role?: string }) => {
   try {
     const subscriptions = await Subscription.find().populate('userId');
-    const technicianSubs = subscriptions.filter((sub: any) => sub.userId && sub.userId.role === 'technician');
+    
+    const targetSubs = subscriptions.filter((sub: any) => {
+      if (!sub.userId) return false;
+      if (target.userId && sub.userId._id.toString() !== target.userId) return false;
+      if (target.role && sub.userId.role !== target.role) return false;
+      return true;
+    });
 
     const notificationPayload = JSON.stringify(payload);
     
-    const pushPromises = technicianSubs.map(sub => 
+    const pushPromises = targetSubs.map(sub => 
       webpush.sendNotification({
         endpoint: sub.endpoint,
         keys: sub.keys

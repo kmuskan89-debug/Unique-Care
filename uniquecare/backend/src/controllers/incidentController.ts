@@ -4,7 +4,7 @@ import Incident from '../models/Incident';
 import Asset from '../models/Asset';
 import { catchAsync } from '../utils/catchAsync';
 import { AppError } from '../utils/AppError';
-import { sendPushNotificationToTechnicians } from '../services/pushService';
+import { createTargetedNotification } from '../services/notificationService';
 
 export const createIncident = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { assetId, tagId, title, description, mediaUrls, location, category } = req.body;
@@ -38,11 +38,14 @@ export const createIncident = catchAsync(async (req: AuthRequest, res: Response,
     status: 'Open'
   });
 
-  // Trigger web push in background
-  sendPushNotificationToTechnicians({
+  await createTargetedNotification({
     title: 'New Incident Reported',
-    body: `A new incident has been reported for asset ${asset.name}`
-  });
+    message: `A new incident has been reported for asset ${asset.name}`,
+    location: asset.location || 'Campus',
+    priority: 'High',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+    incidentId: incident._id
+  }, { role: 'technician' });
 
   res.status(201).json({
     success: true,
@@ -58,7 +61,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
 
   const incidents = await Incident.find(filter)
     .populate('assetId', 'name tagId healthStatus location category')
-    .populate('reportedBy', 'name email')
+    .populate('reportedBy', 'name email rollNo batch batchCode branch')
     .populate('activityLogs.createdBy', 'name role')
     .sort('-createdAt');
 
@@ -71,7 +74,7 @@ export const getIncidents = catchAsync(async (req: AuthRequest, res: Response, n
 export const getIncidentById = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
   const incident = await Incident.findById(req.params.id)
     .populate('assetId', 'name tagId healthStatus location category')
-    .populate('reportedBy', 'name email')
+    .populate('reportedBy', 'name email rollNo batch batchCode branch')
     .populate('assignedTo', 'name email')
     .populate('activityLogs.createdBy', 'name role');
 
@@ -106,6 +109,21 @@ export const updateIncidentStatus = catchAsync(async (req: AuthRequest, res: Res
   }
   await incident.save();
 
+  const notificationPayload = {
+    title: 'Incident Status Updated',
+    message: `Incident status changed to ${status}`,
+    location: 'System',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+    incidentId: incident._id
+  };
+
+  await createTargetedNotification(notificationPayload, { userId: incident.reportedBy.toString() });
+  
+  if (incident.assignedTo) {
+    await createTargetedNotification(notificationPayload, { userId: incident.assignedTo.toString() });
+  }
+
   res.status(200).json({
     success: true,
     data: { incident }
@@ -130,6 +148,21 @@ export const addActivityLog = catchAsync(async (req: AuthRequest, res: Response,
   });
 
   await incident.save();
+
+  const logNotificationPayload = {
+    title: 'New Activity Log Added',
+    message: content.length > 50 ? content.substring(0, 47) + '...' : content,
+    location: 'System',
+    priority: 'Low' as 'Low' | 'Medium' | 'High' | 'Critical',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+    incidentId: incident._id
+  };
+
+  await createTargetedNotification(logNotificationPayload, { userId: incident.reportedBy.toString() });
+  
+  if (incident.assignedTo) {
+    await createTargetedNotification(logNotificationPayload, { userId: incident.assignedTo.toString() });
+  }
 
   res.status(201).json({
     success: true,

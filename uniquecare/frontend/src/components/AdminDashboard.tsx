@@ -9,17 +9,28 @@ import type { IssueRecord } from '../types'
 import useSWR from 'swr'
 import { fetcher } from '../services/api'
 
+import { useAuth } from '../context/AuthContext'
 
 interface AdminDashboardProps {
   records: IssueRecord[]
   onSelectIssue: (issue: IssueRecord) => void
 }
 
+function TrendIcon({ value, size }: { value?: string | number; size: number }) {
+  const n = typeof value === 'number' ? value : parseFloat(String(value ?? '0').replace('%', ''))
+  return n < 0 ? <TrendingDown size={size} /> : <TrendingUp size={size} />
+}
+
 export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) {
   const { data: analytics } = useSWR('/analytics', fetcher, { refreshInterval: 15000 })
+  const { data: techData } = useSWR('/users/technicians', fetcher)
+  const { data: assetsData } = useSWR('/assets', fetcher)
+  const { data: alertsData } = useSWR('/alerts', fetcher)
+  const { user } = useAuth()
 
   const navigate = useNavigate()
   const [chartPeriod, setChartPeriod] = useState<'7d' | '30d' | '6m' | '1y'>('6m')
+  const { data: trendsData } = useSWR(`/analytics/trends?period=${chartPeriod}`, fetcher)
 
   // ─── Derived data ───
   const activeRequests = records.filter(r => r.status !== 'Resolved')
@@ -30,11 +41,12 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
   const lowCount = records.filter(r => r.priority === 'Low' && r.status !== 'Resolved').length
 
   // Category breakdown
-  const categories = ['Electrical', 'HVAC', 'Plumbing', 'Networking', 'AV Equipment', 'Furniture']
-  const categoryData = categories.map(cat => ({
-    name: cat,
-    count: records.filter(r => r.category === cat).length || (cat === 'Electrical' ? 8 : cat === 'HVAC' ? 6 : cat === 'AV Equipment' ? 4 : cat === 'Networking' ? 3 : cat === 'Plumbing' ? 2 : 1),
-  }))
+  const categoryMap = new Map<string, number>()
+  records.forEach(r => {
+    const cat = r.category || 'Other'
+    categoryMap.set(cat, (categoryMap.get(cat) || 0) + 1)
+  })
+  const categoryData = Array.from(categoryMap.entries()).map(([name, count]) => ({ name, count }))
   const totalCategoryCount = categoryData.reduce((s, c) => s + c.count, 0)
 
   // Chart data
@@ -47,7 +59,7 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
 
   // SVG chart helpers
   const chartW = 540, chartH = 210, chartPad = 42
-  const maxVal = Math.max(...chartData.reported, ...chartData.resolved) * 1.15
+  const maxVal = Math.max(...chartData.reported, ...chartData.resolved, 1) * 1.15
   const xStep = (chartW - chartPad * 2) / (chartData.labels.length - 1 || 1)
   const toY = (v: number) => chartH - chartPad - ((v / maxVal) * (chartH - chartPad * 2))
   const toX = (i: number) => chartPad + i * xStep
@@ -68,12 +80,17 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
   const resolveCirc = 2 * Math.PI * resolveR
 
   // Campus blocks
-  const campusBlocks = [
-    { name: 'Thinkspace Lab', issues: records.filter(r => r.location.includes('Thinkspace')).length || 7, color: 'var(--red)' },
-    { name: 'Launchspace', issues: records.filter(r => r.location.includes('Launchspace')).length || 3, color: 'var(--amber-border)' },
-    { name: 'Workspace', issues: records.filter(r => r.location.includes('Workspace')).length || 2, color: '#3b82f6' },
-    { name: 'Waiting Area', issues: records.filter(r => r.location.includes('Waiting')).length || 1, color: 'var(--green-border)' },
-  ]
+  const locationMap = new Map<string, number>()
+  records.forEach(r => {
+    const loc = r.location || 'Unknown'
+    locationMap.set(loc, (locationMap.get(loc) || 0) + 1)
+  })
+  const fallbackLocColors = ['var(--red)', 'var(--amber-border)', '#3b82f6', 'var(--green-border)']
+  const campusBlocks = Array.from(locationMap.entries()).map(([name, issues], i) => ({
+    name,
+    issues,
+    color: fallbackLocColors[i % fallbackLocColors.length]
+  }))
 
   // Greeting
   const hour = new Date().getHours()
@@ -94,12 +111,14 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
   const priorityMax = Math.max(criticalCount, highCount, mediumCount, lowCount, 1)
 
   // Technician roster preview
-  const techTeam = [
-    { name: 'R. Mehta', role: 'AV Lead', status: 'On Shift', color: 'var(--red-bright)', jobs: 2 },
-    { name: 'S. Kulkarni', role: 'Network', status: 'On Shift', color: '#3b82f6', jobs: 1 },
-    { name: 'M. Iqbal', role: 'HVAC', status: 'In Field', color: '#eab308', jobs: 1 },
-    { name: 'V. Singh', role: 'Desktop', status: 'On Shift', color: '#22c55e', jobs: 0 },
-  ]
+  const fallbackColors = ['var(--red-bright)', '#3b82f6', '#eab308', '#22c55e']
+  const techTeam = techData ? techData.map((t: any, i: number) => ({
+    name: t.name,
+    role: t.role || '—',
+    status: t.status || '—',
+    color: fallbackColors[i % fallbackColors.length],
+    jobs: t.activeJobs || 0
+  })) : []
 
   return (
     <main className="page">
@@ -111,7 +130,7 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
             <span className="adm-avatar-dot" />
           </div>
           <div>
-            <p className="adm-greeting">{greeting}, <span>Ajay!</span></p>
+            <p className="adm-greeting">{greeting}, <span>{user?.name?.split(' ')[0] || 'Admin'}!</span></p>
             <h1 className="adm-title">Dashboard</h1>
             <p className="adm-subtitle">Plan, prioritize, and manage your campus maintenance — all in one view.</p>
           </div>
@@ -133,9 +152,9 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
           <div className="adm-kpi-icon-circle icon-red"><Package size={22} /></div>
           <div className="adm-kpi-body">
             <span className="adm-kpi-label">Total Assets</span>
-            <span className="adm-kpi-number">312</span>
+            <span className="adm-kpi-number">{assetsData?.length || 0}</span>
           </div>
-          <div className="adm-kpi-badge trend-up"><TrendingUp size={12} /> 12% from last month</div>
+          <div className="adm-kpi-badge trend-up"><TrendIcon value={analytics?.assetGrowth} size={12} /> {analytics?.assetGrowth || "0%"} from last month</div>
         </div>
 
         <div className="adm-kpi accent-amber" onClick={() => navigate('/issues')}>
@@ -151,16 +170,16 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
           <div className="adm-kpi-icon-circle icon-green"><CheckCircle2 size={22} /></div>
           <div className="adm-kpi-body">
             <span className="adm-kpi-label">Resolved This Month</span>
-            <span className="adm-kpi-number">48</span>
+            <span className="adm-kpi-number">{analytics?.resolvedThisMonth || 0}</span>
           </div>
-          <div className="adm-kpi-badge trend-up"><TrendingUp size={12} /> 20%</div>
+          <div className="adm-kpi-badge trend-up"><TrendIcon value={analytics?.resolvedGrowth} size={12} /> {analytics?.resolvedGrowth || "0%"}</div>
         </div>
 
         <div className="adm-kpi accent-blue" onClick={() => navigate('/analytics')}>
           <div className="adm-kpi-icon-circle icon-blue"><Timer size={22} /></div>
           <div className="adm-kpi-body">
             <span className="adm-kpi-label">Avg Resolution</span>
-            <span className="adm-kpi-number">3.2h</span>
+            <span className="adm-kpi-number">{analytics?.avgResolution || "0h"}</span>
           </div>
           <div className="adm-kpi-badge trend-up">Target &lt; 4h</div>
         </div>
@@ -235,12 +254,7 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
             </div>
           </div>
           <div className="adm-alerts-list">
-            {[
-              { title: 'AC Unit Inspection', loc: 'Thinkspace Lab', date: 'Oct 5', type: 'schedule' },
-              { title: 'Projector Servicing', loc: 'Launchspace', date: 'Oct 7', type: 'schedule' },
-              { title: 'Water Tank Check', loc: 'Main Building', date: 'Oct 10', type: 'schedule' },
-              { title: 'Generator Inspection', loc: 'Engineering Block', date: 'Oct 14', type: 'alert' },
-            ].map((item, i) => (
+            {(alertsData || []).map((item: any, i: number) => (
               <div key={i} className="adm-alert-item">
                 <div className={`adm-alert-dot ${item.type === 'alert' ? 'dot-amber' : ''}`} />
                 <div className="adm-alert-content">
@@ -267,9 +281,9 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
             <button className="adm-btn-outline" onClick={() => navigate('/technician')}>+ View Roster</button>
           </div>
           <div className="adm-team-list">
-            {techTeam.map((t, i) => (
+            {techTeam.map((t: any, i: number) => (
               <div key={i} className="adm-team-row">
-                <div className="adm-team-avatar" style={{ background: t.color }}>{t.name.split(' ').map(n => n[0]).join('')}</div>
+                <div className="adm-team-avatar" style={{ background: t.color }}>{t.name.split(' ').map((n: string) => n[0]).join('')}</div>
                 <div className="adm-team-info">
                   <span className="adm-team-name">{t.name}</span>
                   <span className="adm-team-role">{t.role} · {t.jobs} active jobs</span>
@@ -411,25 +425,25 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
             <div className="adm-perf-item">
               <div className="adm-perf-icon"><Clock3 size={16} /></div>
               <span className="adm-perf-label">First Response</span>
-              <span className="adm-perf-value">42 min</span>
-              <span className="adm-perf-trend"><TrendingDown size={11} /> 8%</span>
+              <span className="adm-perf-value">{analytics?.firstResponse || "0 min"}</span>
+              <span className="adm-perf-trend"><TrendIcon value={analytics?.firstResponseTrend} size={11} /> {analytics?.firstResponseTrend || "0%"}</span>
             </div>
             <div className="adm-perf-item">
               <div className="adm-perf-icon"><Timer size={16} /></div>
               <span className="adm-perf-label">Avg Resolution</span>
-              <span className="adm-perf-value">3.2h</span>
-              <span className="adm-perf-trend"><TrendingDown size={11} /> 14%</span>
+              <span className="adm-perf-value">{analytics?.avgResolution || "0h"}</span>
+              <span className="adm-perf-trend"><TrendIcon value={analytics?.avgResolutionTrend} size={11} /> {analytics?.avgResolutionTrend || "0%"}</span>
             </div>
             <div className="adm-perf-item">
               <div className="adm-perf-icon"><Target size={16} /></div>
               <span className="adm-perf-label">SLA Compliance</span>
-              <span className="adm-perf-value">{analytics ? Math.round(analytics.slaCompliance) : 92}%</span>
-              <div className="adm-perf-bar"><div className="adm-perf-bar-fill" style={{ width: `${analytics ? Math.round(analytics.slaCompliance) : 92}%` }} /></div>
+              <span className="adm-perf-value">{analytics ? Math.round(analytics.slaCompliance) + '%' : '—'}</span>
+              <div className="adm-perf-bar"><div className="adm-perf-bar-fill" style={{ width: analytics ? `${Math.round(analytics.slaCompliance)}%` : '0%' }} /></div>
             </div>
             <div className="adm-perf-item">
               <div className="adm-perf-icon"><Repeat size={16} /></div>
               <span className="adm-perf-label">Resolved Issues</span>
-              <span className="adm-perf-value">{analytics ? analytics.resolvedIncidents : 42}</span>
+              <span className="adm-perf-value">{analytics?.resolvedIncidents || 0}</span>
               <span className="adm-perf-trend"><TrendingUp size={11} /> Total</span>
             </div>
           </div>
@@ -445,10 +459,10 @@ export function AdminDashboard({ records, onSelectIssue }: AdminDashboardProps) 
           </div>
           <div className="adm-priority-list">
             {[
-              { label: 'Critical', count: criticalCount || 3, color: 'var(--red)' },
-              { label: 'High', count: highCount || 5, color: 'var(--amber-border)' },
-              { label: 'Medium', count: mediumCount || 8, color: 'var(--txt-sub)' },
-              { label: 'Low', count: lowCount || 4, color: 'var(--border-bright)' },
+              { label: 'Critical', count: criticalCount, color: 'var(--red)' },
+              { label: 'High', count: highCount, color: 'var(--amber-border)' },
+              { label: 'Medium', count: mediumCount, color: 'var(--txt-sub)' },
+              { label: 'Low', count: lowCount, color: 'var(--border-bright)' },
             ].map((p, i) => (
               <div key={i} className="adm-priority-item">
                 <div className="adm-priority-label">

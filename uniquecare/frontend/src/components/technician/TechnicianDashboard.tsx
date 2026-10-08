@@ -1,49 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import {
   Wrench, CheckCircle2, Clock3, AlertTriangle, UserCheck,
   Search, Filter, MessageSquare, Zap, Package, User,
   MapPin, Calendar, ArrowUpRight
 } from 'lucide-react'
-import { addRepairLogApi } from '../../services/api'
-import type { IssueRecord } from '../../services/api'
-
-interface Technician {
-  id: string
-  name: string
-  title: string
-  specialty: string
-  status: 'On Shift' | 'In Field' | 'On Call' | 'Off Duty'
-  phone: string
-  activeJobsCount: number
-  avatarColor: string
-}
-
-const technicianRoster: Technician[] = [
-  { id: 'TECH-01', name: 'Er. R. Mehta', title: 'Senior AV & Display Lead', specialty: 'AV Equipment & Display Panels', status: 'On Shift', phone: '+91 98765-43210', activeJobsCount: 2, avatarColor: 'var(--red-bright)' },
-  { id: 'TECH-02', name: 'Er. S. Kulkarni', title: 'Network Infrastructure Specialist', specialty: 'Routers, Switches & Fiber Optic', status: 'On Shift', phone: '+91 98765-43211', activeJobsCount: 1, avatarColor: '#3b82f6' },
-  { id: 'TECH-03', name: 'Er. M. Iqbal', title: 'HVAC & Climate Control Tech', specialty: 'Server AC Units & Chiller Panels', status: 'In Field', phone: '+91 98765-43212', activeJobsCount: 1, avatarColor: '#eab308' },
-  { id: 'TECH-04', name: 'Er. Vikram Singh', title: 'Desktop Hardware Technician', specialty: 'PC Assembly, GPU & Motherboards', status: 'On Shift', phone: '+91 98765-43213', activeJobsCount: 0, avatarColor: '#22c55e' },
-  { id: 'TECH-05', name: 'Er. Neha Verma', title: 'Systems Triage Engineer', specialty: 'Diagnostics & SLA Tracking', status: 'On Call', phone: '+91 98765-43214', activeJobsCount: 0, avatarColor: '#a855f7' },
-  { id: 'TECH-06', name: 'Er. Rajesh Sharma', title: 'Lab Automation Lead', specialty: 'IoT Controllers & Smart Sensors', status: 'On Shift', phone: '+91 98765-43215', activeJobsCount: 0, avatarColor: '#ec4899' },
-]
-
-interface SparePart {
-  id: string
-  name: string
-  category: string
-  stock: number
-  unit: string
-  status: 'In Stock' | 'Low Stock' | 'Reorder'
-}
-
-const sparePartsInventory: SparePart[] = [
-  { id: 'PART-101', name: 'HDMI 2.1 Ultra-HD Cable (5m)', category: 'AV Cables', stock: 14, unit: 'units', status: 'In Stock' },
-  { id: 'PART-102', name: 'Cat6 Shielded RJ45 Cable (10m)', category: 'Networking', stock: 28, unit: 'units', status: 'In Stock' },
-  { id: 'PART-103', name: 'BenQ Projector Replacement Lamp', category: 'AV Accessories', stock: 2, unit: 'units', status: 'Low Stock' },
-  { id: 'PART-104', name: '650W Modular ATX Power Supply', category: 'PC Hardware', stock: 5, unit: 'units', status: 'In Stock' },
-  { id: 'PART-105', name: 'R32 Refrigerant Gas Canister', category: 'HVAC', stock: 4, unit: 'canisters', status: 'In Stock' },
-  { id: 'PART-106', name: 'Cisco 24-Port Gigabit Ethernet Switch', category: 'Networking', stock: 1, unit: 'units', status: 'Reorder' },
-]
+import { addRepairLogApi, fetcher } from '../../services/api'
+import { INSTITUTION_NAME } from '../../config/branding'
+import type { IssueRecord, Technician, SparePart } from '../../services/api'
 
 interface TechnicianDashboardProps {
   records: IssueRecord[]
@@ -53,7 +17,17 @@ interface TechnicianDashboardProps {
 }
 
 export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, onRefresh }: TechnicianDashboardProps) {
-  const [selectedTech, setSelectedTech] = useState<Technician>(technicianRoster[0])
+  const { data: technicianRoster = [] } = useSWR<Technician[]>('/users/technicians', fetcher)
+  const { data: sparePartsInventory = [] } = useSWR<SparePart[]>('/inventory', fetcher)
+
+  const [selectedTech, setSelectedTech] = useState<Technician | null>(null)
+  
+  useEffect(() => {
+    if (technicianRoster.length > 0 && !selectedTech) {
+      setSelectedTech(technicianRoster[0])
+    }
+  }, [technicianRoster, selectedTech])
+
   const [filterStatus, setFilterStatus] = useState<'All' | 'Open' | 'In Progress' | 'Resolved'>('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'workorders' | 'roster' | 'spares'>('workorders')
@@ -66,7 +40,7 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
   const filteredJobs = records.filter(r => {
     const matchesStatus = filterStatus === 'All' || r.status === filterStatus
     const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.ticketId || r.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.assignee.toLowerCase().includes(searchQuery.toLowerCase())
 
@@ -101,21 +75,21 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
       {/* ── 1. Technician Header Banner ─────────────────────────────── */}
       <div className="tech-hero-card">
         <div className="tech-hero-left">
-          <div className="tech-avatar-circle" style={{ borderColor: selectedTech.avatarColor }}>
-            <Wrench size={28} color={selectedTech.avatarColor} />
-            <span className="tech-status-dot" title={selectedTech.status}></span>
+          <div className="tech-avatar-circle" style={{ borderColor: selectedTech?.avatarColor || '#ccc' }}>
+            <Wrench size={28} color={selectedTech?.avatarColor || '#ccc'} />
+            <span className="tech-status-dot" title={selectedTech?.status || 'Loading'}></span>
           </div>
 
           <div>
             <div className="tech-badge-row">
               <span className="badge-tech-tag">TECHNICIAN SHIFT OPERATIONS</span>
-              <span className="badge-tech-status">{selectedTech.status}</span>
-              <span className="badge-tech-role">{selectedTech.title}</span>
+              <span className="badge-tech-status">{selectedTech?.status || 'Loading...'}</span>
+              <span className="badge-tech-role">{selectedTech?.title || 'Unknown Role'}</span>
             </div>
 
-            <h1 className="tech-name">{selectedTech.name}</h1>
+            <h1 className="tech-name">{selectedTech?.name || 'Loading Technician...'}</h1>
             <p className="tech-specialty">
-              Specialty: <strong>{selectedTech.specialty}</strong> · Hotline: <strong>{selectedTech.phone}</strong>
+              Specialty: <strong>{selectedTech?.specialty || 'N/A'}</strong> · Hotline: <strong>{selectedTech?.phone || 'N/A'}</strong>
             </p>
           </div>
         </div>
@@ -124,17 +98,21 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
         <div className="tech-switcher-box">
           <label><User size={13} /> ACTIVE TECHNICIAN ON DUTY:</label>
           <select
-            value={selectedTech.id}
+            value={selectedTech?.id || ''}
             onChange={e => {
               const found = technicianRoster.find(t => t.id === e.target.value)
               if (found) setSelectedTech(found)
             }}
           >
-            {technicianRoster.map(tech => (
-              <option key={tech.id} value={tech.id}>
-                {tech.name} ({tech.title}) — {tech.status}
-              </option>
-            ))}
+            {technicianRoster.length === 0 ? (
+              <option value="">Loading...</option>
+            ) : (
+              technicianRoster.map(tech => (
+                <option key={tech.id} value={tech.id}>
+                  {tech.name} ({tech.title}) — {tech.status}
+                </option>
+              ))
+            )}
           </select>
         </div>
       </div>
@@ -245,8 +223,8 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
                   <div className="job-card-top">
                     <div style={{ flex: 1 }}>
                       <div className="job-tag-row">
-                        <span className="ticket-id-tag">{job.id}</span>
-                        <span className="ticket-category-tag">{job.category || 'AV Equipment'}</span>
+                        <span className="ticket-id-tag">{job.ticketId || job.id}</span>
+                        <span className="ticket-category-tag">{job.category || 'Uncategorized'}</span>
                         <span className={`badge-priority ${job.priority.toLowerCase()}`}>{job.priority} Priority</span>
                       </div>
                       <h3 className="job-title">{job.title}</h3>
@@ -347,7 +325,7 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
         <div className="student-section">
           <div className="page-heading" style={{ marginBottom: '20px' }}>
             <div>
-              <p className="kicker">SVIET MAINTENANCE TEAM</p>
+              <p className="kicker">{INSTITUTION_NAME} MAINTENANCE TEAM</p>
               <h2 style={{ fontSize: '1.4rem', color: 'var(--txt)' }}>On-Duty Technician Roster</h2>
               <span style={{ color: 'var(--txt-muted)', fontSize: '0.85rem' }}>Active engineering technicians assigned across campus lab blocks.</span>
             </div>
@@ -455,7 +433,7 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
             <div className="modal-header">
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--red-bright)', fontWeight: 700 }}>
-                  POST REPAIR LOG · TICKET #{noteModalIssue.id}
+                  POST REPAIR LOG · TICKET #{noteModalIssue.ticketId || noteModalIssue.id}
                 </span>
                 <h3 style={{ marginTop: '2px', color: 'var(--txt)' }}>{noteModalIssue.title}</h3>
               </div>
@@ -465,7 +443,7 @@ export function TechnicianDashboard({ records, onStatusChange, onSelectIssue, on
             <form onSubmit={handleAddTechNote} style={{ padding: '24px' }}>
               <div className="reg-field" style={{ marginBottom: '16px' }}>
                 <label>Active Technician</label>
-                <input value={selectedTech.name} disabled style={{ opacity: 0.7 }} />
+                <input value={selectedTech?.name || ''} disabled style={{ opacity: 0.7 }} />
               </div>
 
               <div className="reg-field" style={{ marginBottom: '20px' }}>

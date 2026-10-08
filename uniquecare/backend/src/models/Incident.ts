@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export const INCIDENT_STATUSES = ['Open', 'In Progress', 'Resolved'] as const;
+
 export interface IActivityLog {
   message: string;
   createdBy: mongoose.Types.ObjectId;
@@ -31,7 +33,7 @@ const incidentSchema = new Schema<IIncident>(
     assignedTo: { type: Schema.Types.ObjectId, ref: 'User' },
     status: {
       type: String,
-      enum: ['Open', 'In Progress', 'Resolved'], // Open -> In Progress -> Resolved
+      enum: INCIDENT_STATUSES, // Open -> In Progress -> Resolved
       default: 'Open',
     },
     description: { type: String, required: true },

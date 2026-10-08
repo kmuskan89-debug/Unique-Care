@@ -12,6 +12,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import userRoutes from './routes/userRoutes';
 import inventoryRoutes from './routes/inventoryRoutes';
 import requisitionRoutes from './routes/requisitionRoutes';
+import metadataRoutes from './routes/metadataRoutes';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/requisitions', requisitionRoutes);
+app.use('/api/metadata', metadataRoutes);
 
 // Error Handler Middleware
 import { errorHandler } from './middleware/errorHandler';

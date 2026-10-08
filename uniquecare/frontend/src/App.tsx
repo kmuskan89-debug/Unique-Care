@@ -23,9 +23,11 @@ import { Footer } from './components/shared/Footer'
 import { ProtectedRoute, getDefaultDashboard } from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import type { DisplayRole } from './context/AuthContext'
-import { fetchIssuesFromApi, updateIncidentStatusApi } from './services/api'
+import { fetchIssuesFromApi, markNotificationsReadApi, markNotificationReadApi, updateIncidentStatusApi, fetchLocationsApi, fetchCategoriesApi, fetchPrioritiesApi, fetchStatusesApi } from './services/api'
+import { INSTITUTION_NAME } from './config/branding'
 
 import useSWR from 'swr'
+import useSWRInfinite from 'swr/infinite'
 import { fetcher } from './services/api'
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -37,6 +39,7 @@ interface IssueRecord {
   status: 'Open' | 'In Progress' | 'Resolved'
   assignee: string
   reporter: string
+  ticketId?: string
   date: string
   time?: string
   description?: string
@@ -143,15 +146,18 @@ function IssueDetailModal({ issue, onClose, onStatusChange }: {
   onStatusChange: (id: string, status: 'Open' | 'In Progress' | 'Resolved') => void;
 }) {
   const [comment, setComment] = useState('')
-  const [comments, setComments] = useState([
-    { author: issue.reporter, text: 'Lodged complaint via QR asset tag.', time: '2 days ago' },
-    { author: issue.assignee, text: 'Assigned tech. Hardware inspection ongoing.', time: '1 day ago' }
-  ])
+  const { data: comments = [], mutate } = useSWR(`/incidents/${issue.id}/activity`, fetcher)
+  const { data: statuses = [] } = useSWR('statuses', fetchStatusesApi)
 
-  const handleAddComment = (e: React.FormEvent) => {
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!comment.trim()) return
-    setComments([...comments, { author: 'Current User', text: comment, time: 'Just now' }])
+    await fetch(`/api/incidents/${issue.id}/activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: comment })
+    })
+    mutate()
     setComment('')
   }
 
@@ -161,7 +167,7 @@ function IssueDetailModal({ issue, onClose, onStatusChange }: {
         <div className="modal-header">
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--red-bright)', fontWeight: 700 }}>
-              TICKET #{issue.id} · <span className={`badge-status ${issue.priority.toLowerCase()}`}>{issue.priority}</span>
+              TICKET #{issue.ticketId || issue.id} · <span className={`badge-status ${issue.priority.toLowerCase()}`}>{issue.priority}</span>
             </span>
             <h3 style={{ marginTop: '2px', color: 'var(--txt)' }}>{issue.title}</h3>
           </div>
@@ -190,10 +196,10 @@ function IssueDetailModal({ issue, onClose, onStatusChange }: {
           <div style={{ marginBottom: '24px' }}>
             <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '10px', color: 'var(--txt)' }}>Status Triage</h4>
             <div style={{ display: 'flex', gap: '10px' }}>
-              {(['Open', 'In Progress', 'Resolved'] as const).map(st => (
+              {(statuses as string[]).filter(st => st !== 'All').map(st => (
                 <button
                   key={st}
-                  onClick={() => onStatusChange(issue.id, st)}
+                  onClick={() => onStatusChange(issue.id, st as 'Open' | 'In Progress' | 'Resolved')}
                   className={issue.status === st ? 'btn-red' : 'btn-dark'}
                   style={{ padding: '8px 16px', fontSize: '0.82rem' }}
                 >
@@ -207,7 +213,7 @@ function IssueDetailModal({ issue, onClose, onStatusChange }: {
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
             <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px', color: 'var(--txt)' }}>Activity Stream</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '160px', overflowY: 'auto', marginBottom: '16px' }}>
-              {comments.map((c, i) => (
+              {comments.map((c: any, i: number) => (
                 <div key={i} style={{ background: 'var(--bg-card-alt)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <b style={{ color: 'var(--txt)' }}>{c.author}</b>
@@ -240,7 +246,6 @@ function Home({
   toggleTheme,
   initialAuthModal = false
 }: { 
-  records?: IssueRecord[]; 
   theme: 'dark' | 'light'; 
   toggleTheme: () => void;
   initialAuthModal?: boolean;
@@ -333,7 +338,7 @@ function Home({
             Smart Lab <span className="text-red-highlight">Maintenance</span> &amp; Automation
           </h1>
           <p>
-            Fully automated digital platform for reporting, tracking, and managing SVIET campus infrastructure and lab assets. Built for The Uniques Community.
+            Fully automated digital platform for reporting, tracking, and managing {INSTITUTION_NAME} campus infrastructure and lab assets. Built for The Uniques Community.
           </p>
           <div className="hero-btns">
             <button 
@@ -637,32 +642,7 @@ function Home({
               <li><span className="bullet-dot" />Weekly digest reports for department heads</li>
             </ul>
           </div>
-          <div className="feature-split-visual reveal-scale delay-2">
-            <div className="ticket-feed-mock">
-              <div className="ticket-mock-header">
-                <span className="mock-dot red" /><span className="mock-dot amber" /><span className="mock-dot green" />
-                <span style={{ marginLeft: 10, fontSize: '0.78rem', color: 'var(--txt-sub)', fontWeight: 600 }}>LIVE ISSUE FEED</span>
-              </div>
-              {[
-                { id: '2024BTCS205', title: 'HDMI Port Sync Failure', loc: 'Thinkspace Lab', status: 'In Progress', time: '2m ago' },
-                { id: '2023BTCS088', title: 'Projector Signal Blink', loc: 'Launchspace', status: 'Open', time: '18m ago' },
-                { id: '2025BTCS159', title: 'Ethernet Port 14 Disconnect', loc: 'Workspace', status: 'Resolved', time: '1h ago' },
-                { id: '2024BTCS125', title: 'AC Cooling Temp Spike', loc: 'Thinkspace Lab', status: 'In Progress', time: '3h ago' },
-              ].map((t, i) => (
-                <div key={i} className={`ticket-mock-row${i === 1 ? ' highlighted' : ''}`}>
-                  <div className="ticket-mock-id">{t.id}</div>
-                  <div className="ticket-mock-info">
-                    <div className="ticket-mock-title">{t.title}</div>
-                    <div className="ticket-mock-sub">{t.loc} · {t.time}</div>
-                  </div>
-                  <span className={`badge-status ${t.status === 'Resolved' ? 'available' : t.status === 'In Progress' ? 'in-progress' : 'critical'}`} style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                    {t.status}
-                  </span>
-                </div>
-              ))}
-              <button className="ticket-mock-cta" onClick={() => navigate('/issues')}>View All Issues →</button>
-            </div>
-          </div>
+
         </div>
       </section>
 
@@ -672,32 +652,7 @@ function Home({
           <img src="/tech_hud_elements.svg" className="bg-vector-float tech-hud-split" alt="" />
         </div>
         <div className="feature-split-inner feature-reversed">
-          <div className="feature-split-visual reveal-scale delay-2">
-            <div className="platform-visual-mock">
-              <div className="platform-mock-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <div className="platform-avatar">UC</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--txt)' }}>Unicare</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--red)', fontWeight: 600 }}>SVIET Campus · Admin Panel</div>
-                  </div>
-                </div>
-                {['Thinkspace Lab', 'Launchspace', 'Workspace', 'SVIET Main Block'].map((lab, i) => (
-                  <div key={i} className="platform-lab-row">
-                    <div className="platform-lab-dot" style={{ background: i === 0 ? 'var(--red)' : i === 1 ? 'var(--amber-border)' : 'var(--green-border)' }} />
-                    <span style={{ flex: 1, fontSize: '0.84rem', color: 'var(--txt-muted)', fontWeight: 500 }}>{lab}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--txt-sub)' }}>{[2, 1, 0, 3][i]} issues</span>
-                  </div>
-                ))}
-                <div className="platform-sync-badge"><Zap size={12} /> Auto-Sync Enabled</div>
-              </div>
-              <div className="platform-integration-pills">
-                {['SVIET SSO', 'Zapier', 'REST API', 'CSV Export', 'Email Digest'].map((p, i) => (
-                  <span key={i} className="integration-pill">{p}</span>
-                ))}
-              </div>
-            </div>
-          </div>
+
           <div className="feature-split-text">
             <div className="feature-index-num reveal-scale delay-1">02</div>
             <span className="feature-eyebrow">Total Control</span>
@@ -748,27 +703,7 @@ function Home({
               </div>
             </div>
           </div>
-          <div className="feature-split-visual reveal-scale delay-2">
-            <div className="member-profile-mock">
-              <div className="member-profile-avatar-wrap">
-                <div className="member-profile-avatar">VK</div>
-                <div className="member-profile-badge"><ShieldCheck size={14} /></div>
-              </div>
-              <div className="member-profile-name">Vishwajeet Kumar</div>
-              <div className="member-profile-role">Batch 4.0 · Uniques Community</div>
-              <div className="member-profile-stats">
-                <div className="member-stat"><span className="member-stat-val">12</span><span className="member-stat-label">Tickets Filed</span></div>
-                <div className="member-stat"><span className="member-stat-val">3</span><span className="member-stat-label">In Progress</span></div>
-                <div className="member-stat"><span className="member-stat-val">9</span><span className="member-stat-label">Resolved</span></div>
-              </div>
-              <div className="member-profile-tags">
-                <span className="integration-pill">Thinkspace Lab</span>
-                <span className="integration-pill">AV Equipment</span>
-                <span className="integration-pill">Networking</span>
-              </div>
-              <button className="ticket-mock-cta" onClick={() => navigate('/student')} style={{ marginTop: 16 }}>View Profile →</button>
-            </div>
-          </div>
+
         </div>
       </section>
 
@@ -849,7 +784,8 @@ export default function App() {
     priority: 'Medium', // Default for now
     status: inc.status || 'Open',
     assignee: inc.assignedTo?.name || 'Unassigned',
-    reporter: inc.reportedBy?.name || 'Unknown',
+    ticketId: 'UC-' + String(inc._id).slice(-6).toUpperCase(),
+    reporter: inc.reportedBy?.name ? inc.reportedBy.name + (inc.reportedBy.rollNo ? ' (' + inc.reportedBy.rollNo + ')' : '') : 'Unknown',
     date: new Date(inc.createdAt).toLocaleDateString(),
     time: new Date(inc.createdAt).toLocaleTimeString(),
     description: inc.description || '',
@@ -873,11 +809,11 @@ export default function App() {
         <ScrollRevealManager />
         <div className="global-ambient-glow" aria-hidden="true" />
         <Routes>
-          <Route path="/" element={<Home records={records} theme={theme} toggleTheme={toggleTheme} />} />
-          <Route path="/login" element={<Home records={records} theme={theme} toggleTheme={toggleTheme} initialAuthModal={true} />} />
+          <Route path="/" element={<Home theme={theme} toggleTheme={toggleTheme} />} />
+          <Route path="/login" element={<Home theme={theme} toggleTheme={toggleTheme} initialAuthModal={true} />} />
                     <Route path="/*" element={
             <ProtectedRoute>
-              <Portal records={records} setRecords={setRecords} assets={assets} setAssets={setAssets} theme={theme} toggleTheme={toggleTheme} />
+              <Portal records={records} setRecords={setRecords} assets={assets} theme={theme} toggleTheme={toggleTheme} />
             </ProtectedRoute>
           } />
         </Routes>
@@ -886,11 +822,10 @@ export default function App() {
   )
 }
 
-function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: { 
+function Portal({ records, setRecords, assets, theme, toggleTheme }: { 
   records: IssueRecord[]; 
   setRecords: React.Dispatch<React.SetStateAction<IssueRecord[]>>;
   assets: AssetRecord[];
-  setAssets: React.Dispatch<React.SetStateAction<AssetRecord[]>>;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
 }) {
@@ -900,11 +835,13 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
   const [searchQuery, setSearchQuery] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Critical AC Temperature Alert', location: 'Thinkspace', time: '10 min ago', unread: true, priority: 'Critical' },
-    { id: 2, title: 'HDMI Sync Failure Assigned', location: 'Thinkspace', time: '1 hour ago', unread: true, priority: 'High' },
-    { id: 3, title: 'Water Leak Inspection Requested', location: 'Waiting Area', time: '2 hours ago', unread: true, priority: 'Medium' },
-  ])
+  const getNotifKey = (pageIndex: number, previousPageData: any) => {
+    if (!isAuthenticated) return null
+    if (previousPageData && !previousPageData.length) return null
+    return `/notifications?page=${pageIndex + 1}&limit=10`
+  }
+  const { data: notificationsPages, mutate: mutateNotifications, setSize, size, isValidating: notifValidating } = useSWRInfinite(getNotifKey, fetcher)
+  const notifications: any[] = notificationsPages ? notificationsPages.flat() : []
 
   const navigate = useNavigate()
 
@@ -950,7 +887,7 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
   const filteredSearchResults = searchQuery.trim() ? [
     ...records.filter(r => 
       r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.ticketId || r.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.location.toLowerCase().includes(searchQuery.toLowerCase())
     ).map(r => ({ type: 'Ticket' as const, id: r.id, name: r.title, sub: `${r.location} · ${r.status}`, item: r })),
     ...assets.filter(a =>
@@ -1088,57 +1025,86 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
             {/* Role Badge (read-only, shows assigned role from backend) */}
             <div className="role-switch">
               <button className="role-btn active" style={{ cursor: 'default', pointerEvents: 'none' }}>
-                {role}
+                {role === 'Student' ? user?.name : role}
               </button>
             </div>
 
             {/* Functional Notifications Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                style={{ position: 'relative', color: 'var(--txt-muted)', padding: '6px' }} 
-                onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false) }}
-                title="Notifications"
-              >
-                <Bell size={18} />
-                {notifications.filter(n => n.unread).length > 0 && (
-                  <span style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', background: 'var(--red)', borderRadius: '50%', fontSize: '0.65rem', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-                    {notifications.filter(n => n.unread).length}
-                  </span>
-                )}
-              </button>
+            {isAuthenticated && (
+              <div style={{ position: 'relative' }}>
+                <button 
+                  style={{ position: 'relative', color: 'var(--txt-muted)', padding: '6px' }} 
+                  onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false) }}
+                  title="Notifications"
+                >
+                  <Bell size={18} />
+                  {notifications.filter(n => n.unread).length > 0 && (
+                    <span style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', background: 'var(--red)', borderRadius: '50%', fontSize: '0.65rem', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
+                      {notifications.filter(n => n.unread).length}
+                    </span>
+                  )}
+                </button>
 
-              {notifOpen && (
-                <div className="nav-popover">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <b style={{ fontSize: '0.9rem', color: 'var(--txt)' }}>System Alerts & Activity</b>
-                    <button 
-                      style={{ fontSize: '0.75rem', color: 'var(--red-bright)', fontWeight: 600 }}
-                      onClick={() => setNotifications(prev => prev.map(n => ({ ...n, unread: false })))}
+                {notifOpen && (
+                  <div className="nav-popover">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <b style={{ fontSize: '0.9rem', color: 'var(--txt)' }}>System Alerts & Activity</b>
+                      <button 
+                        style={{ fontSize: '0.75rem', color: 'var(--red-bright)', fontWeight: 600 }}
+                        onClick={() => {
+                          mutateNotifications(notificationsPages?.map(page => page.map((n: any) => ({ ...n, unread: false }))), false);
+                          markNotificationsReadApi();
+                        }}
+                      >
+                        Mark all read
+                      </button>
+                    </div>
+                    <div 
+                      style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}
+                      onScroll={(e) => {
+                        const target = e.currentTarget;
+                        if (target.scrollHeight - target.scrollTop <= target.clientHeight + 10 && !notifValidating) {
+                          setSize(size + 1);
+                        }
+                      }}
                     >
-                      Mark all read
+                      {notifications.map(n => (
+                        <div key={n.id} style={{ padding: '10px', background: n.unread ? 'var(--bg-card-alt)' : 'transparent', borderLeft: n.unread ? '3px solid var(--red)' : '3px solid transparent', borderRadius: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600 }}>
+                            <span style={{ color: n.priority === 'Critical' ? 'var(--red-bright)' : 'var(--txt)' }}>{n.title}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--txt-sub)' }}>{n.time}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--txt-muted)' }}>Location: {n.location}</span>
+                            {n.unread && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  mutateNotifications(notificationsPages?.map(page => page.map((no: any) => no.id === n.id ? { ...no, unread: false } : no)), false);
+                                  markNotificationReadApi(n.id);
+                                }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--green-txt)', cursor: 'pointer', padding: '2px' }}
+                                title="Mark read"
+                              >
+                                <Check size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {notifValidating && <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--txt-muted)', padding: '8px' }}>Loading...</div>}
+                    </div>
+                    <button 
+                      className="btn-dark" 
+                      style={{ width: '100%', marginTop: '12px', padding: '6px', fontSize: '0.78rem' }}
+                      onClick={() => { navigate('/issues'); setNotifOpen(false) }}
+                    >
+                      View All Issues ↗
                     </button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {notifications.map(n => (
-                      <div key={n.id} style={{ padding: '10px', background: n.unread ? 'var(--bg-card-alt)' : 'transparent', borderLeft: n.unread ? '3px solid var(--red)' : '3px solid transparent', borderRadius: '4px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600 }}>
-                          <span style={{ color: n.priority === 'Critical' ? 'var(--red-bright)' : 'var(--txt)' }}>{n.title}</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--txt-sub)' }}>{n.time}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--txt-muted)' }}>Location: {n.location}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button 
-                    className="btn-dark" 
-                    style={{ width: '100%', marginTop: '12px', padding: '6px', fontSize: '0.78rem' }}
-                    onClick={() => { navigate('/issues'); setNotifOpen(false) }}
-                  >
-                    View All Issues ↗
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* User Profile Menu — shows real user info from AuthContext */}
             <div style={{ position: 'relative' }}>
@@ -1221,7 +1187,7 @@ function Portal({ records, setRecords, assets, setAssets, theme, toggleTheme }: 
           } />
           <Route path="/inventory" element={
             <ProtectedRoute allowedRoles={['admin', 'lab_admin', 'technician']}>
-              <Inventory assets={assets} onAddAsset={(newA) => setAssets([newA, ...assets])} />
+              <Inventory />
             </ProtectedRoute>
           } />
           <Route path="/analytics" element={
@@ -1263,7 +1229,7 @@ function Issues({ records, onSelectIssue }: { records: IssueRecord[]; onSelectIs
 
   const filtered = records.filter(r =>
     (category === 'All' || r.category === category) &&
-    (r.title.toLowerCase().includes(query.toLowerCase()) || r.id.toLowerCase().includes(query.toLowerCase()))
+    (r.title.toLowerCase().includes(query.toLowerCase()) || (r.ticketId || r.id).toLowerCase().includes(query.toLowerCase()))
   )
 
   return (
@@ -1287,10 +1253,9 @@ function Issues({ records, onSelectIssue }: { records: IssueRecord[]; onSelectIs
           <label>Category</label>
           <select value={category} onChange={e => setCategory(e.target.value)}>
             <option value="All">All</option>
-            <option value="AV Equipment">AV Equipment</option>
-            <option value="Networking">Networking</option>
-            <option value="Infrastructure">Infrastructure</option>
-            <option value="HVAC">HVAC</option>
+            {Array.from(new Set(records.map(r => r.category).filter(Boolean))).map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
         </div>
 
@@ -1312,7 +1277,7 @@ function Issues({ records, onSelectIssue }: { records: IssueRecord[]; onSelectIs
             <tbody>
               {filtered.map(r => (
                 <tr key={r.id}>
-                  <td><span className="ticket-id-tag">{r.id}</span></td>
+                  <td><span className="ticket-id-tag">{r.ticketId || r.id}</span></td>
                   <td>
                     <div className="table-record-cell">
                       <span className="record-title-bold">{r.title}</span>
@@ -1351,12 +1316,37 @@ function Issues({ records, onSelectIssue }: { records: IssueRecord[]; onSelectIs
 }
 
 function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) => void, assets: AssetRecord[] }) {
+  const { data: fetchedLocations, error: locationsError } = useSWR('locations', fetchLocationsApi)
+  const { data: fetchedCategories, error: categoriesError } = useSWR('categories', fetchCategoriesApi)
+  const { data: fetchedPriorities, error: prioritiesError } = useSWR('priorities', fetchPrioritiesApi)
+  const metaError = locationsError || categoriesError || prioritiesError
+  const metaLoading = !metaError && (!fetchedLocations || !fetchedCategories || !fetchedPriorities)
+
+  const availableLocations: string[] = Array.isArray(fetchedLocations) ? fetchedLocations : []
+  const availableCategories: { value: string; label: string }[] = Array.isArray(fetchedCategories) ? fetchedCategories : []
+  const availablePriorities: { value: string; label: string }[] = Array.isArray(fetchedPriorities) ? fetchedPriorities : []
+
   const [title, setTitle] = useState('')
-  const [location, setLocation] = useState('Thinkspace')
-  const [category, setCategory] = useState('AV Equipment')
-  const [priority, setPriority] = useState<'Critical' | 'High' | 'Medium' | 'Low'>('High')
+  const [location, setLocation] = useState('')
+  const [category, setCategory] = useState('')
+  const [priority, setPriority] = useState<'Critical' | 'High' | 'Medium' | 'Low'>('' as any)
+  useEffect(() => { if (!location && availableLocations.length) setLocation(availableLocations[0]) }, [availableLocations, location])
+  useEffect(() => { if (!category && availableCategories.length) setCategory(availableCategories[0].value) }, [availableCategories, category])
+  useEffect(() => { if (!priority && availablePriorities.length) setPriority(availablePriorities[0].value as any) }, [availablePriorities, priority])
   const [description, setDescription] = useState('')
   const [submitted, setSubmitted] = useState(false)
+
+  useEffect(() => {
+    if (fetchedLocations?.length && location === 'Thinkspace') setLocation(fetchedLocations[0])
+  }, [fetchedLocations])
+
+  useEffect(() => {
+    if (fetchedCategories?.length && category === 'AV Equipment') setCategory(fetchedCategories[0].value)
+  }, [fetchedCategories])
+
+  useEffect(() => {
+    if (fetchedPriorities?.length && priority === 'High') setPriority(fetchedPriorities[1]?.value as any || fetchedPriorities[0].value)
+  }, [fetchedPriorities])
   const [scannedAsset, setScannedAsset] = useState<AssetRecord | null>(null)
 
   // Camera & Scan states
@@ -1400,9 +1390,9 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
   const handleResetScan = () => {
     setScannedAsset(null)
     setTitle('')
-    setLocation('Thinkspace')
-    setCategory('AV Equipment')
-    setPriority('High')
+    setLocation(availableLocations[0] || '')
+    setCategory(availableCategories[0]?.value || '')
+    setPriority((availablePriorities[0]?.value || '') as any)
     setDescription('')
   }
 
@@ -1469,8 +1459,8 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
               setScannedAsset({
                 id: code,
                 name: `Hardware Asset (${code})`,
-                category: 'AV Equipment',
-                location: 'Thinkspace',
+                category: availableCategories[0]?.value,
+                location: availableLocations[0],
                 status: 'Active',
                 lastService: new Date().toISOString().split('T')[0],
                 nextDue: '2026-12-31',
@@ -1488,7 +1478,7 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isCameraActive])
+  }, [isCameraActive, assets, availableCategories, availableLocations])
 
   // Cleanup camera stream on unmount
   useEffect(() => {
@@ -1500,30 +1490,20 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
     }
   }, [])
 
-  // Simulated scan action button
-  const handleSimulatedScan = (asset?: AssetRecord) => {
-    setScanning(true)
-    setTimeout(() => {
-      setScanning(false)
-      const targetAsset = asset || assets[Math.floor(Math.random() * assets.length)]
-      applyAssetDetails(targetAsset)
-    }, 600)
-  }
 
   // Handle uploaded QR image file
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setScanning(true)
-    setTimeout(() => {
-      setScanning(false)
-      const randomAsset = assets[Math.floor(Math.random() * assets.length)]
-      applyAssetDetails(randomAsset)
-    }, 750)
+    alert('QR decoding from image is not yet implemented.')
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { user } = useAuth()
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check if there is a real createIssue endpoint. Wait, onAddRecord handles it.
     onAddRecord({
       id: scannedAsset ? `UC-${scannedAsset.id.replace('INV-', '')}` : `UC-EFDA${Math.floor(10 + Math.random() * 90)}`,
       title,
@@ -1532,7 +1512,7 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
       priority,
       status: 'Open',
       assignee: 'Unassigned',
-      reporter: 'Vishwajeet (Student)',
+      reporter: user?.name || 'Unknown',
       date: new Date().toISOString().split('T')[0],
       description,
     })
@@ -1546,7 +1526,7 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
           <CheckCircle2 size={60} color="var(--green-txt)" style={{ margin: '0 auto 16px' }} />
           <h2 style={{ fontSize: '1.7rem', color: 'var(--txt)', marginBottom: '8px' }}>Complaint Successfully Dispatched!</h2>
           <p style={{ color: 'var(--txt-muted)', marginBottom: '24px', fontSize: '0.92rem' }}>
-            Ticket ID has been assigned and queued for SVIET lab maintenance technicians.
+            Ticket ID has been assigned and queued for {INSTITUTION_NAME} lab maintenance technicians.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button className="btn-dark" onClick={() => { setSubmitted(false); handleResetScan(); }}>
@@ -1653,10 +1633,6 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
                 <Video size={15} /> Start Web Camera
               </button>
             )}
-
-            <button className="btn-dark" type="button" onClick={() => handleSimulatedScan()}>
-              <Sparkles size={15} color="var(--amber-txt)" /> Simulate Random Scan
-            </button>
           </div>
 
           {/* Upload QR Image */}
@@ -1677,7 +1653,7 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
                 <div
                   key={asset.id}
                   className={`quick-asset-tag ${scannedAsset?.id === asset.id ? 'selected' : ''}`}
-                  onClick={() => handleSimulatedScan(asset)}
+                  onClick={() => applyAssetDetails(asset)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <QrCode size={16} color={scannedAsset?.id === asset.id ? 'var(--green-txt)' : 'var(--red-bright)'} />
@@ -1711,24 +1687,24 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Projector HDMI port damaged" required />
           </div>
 
+          {metaLoading && <p>Loading form options…</p>}
+          {metaError && <p role="alert">Failed to load form options. Please retry later.</p>}
           <div className="form-grid-2">
             <div className="reg-field">
               <label>Location / Room</label>
               <select value={location} onChange={e => setLocation(e.target.value)}>
-                <option value="Thinkspace">Thinkspace</option>
-                <option value="Workspace">Workspace</option>
-                <option value="Launchspace">Launchspace</option>
-                <option value="The Uniques Waiting Area">The Uniques Waiting Area</option>
+                {availableLocations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
               </select>
             </div>
 
             <div className="reg-field">
               <label>Category</label>
               <select value={category} onChange={e => setCategory(e.target.value)}>
-                <option value="AV Equipment">AV Equipment</option>
-                <option value="Networking">Networking</option>
-                <option value="Infrastructure">Infrastructure</option>
-                <option value="HVAC">HVAC</option>
+                {availableCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -1737,16 +1713,15 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
             <div className="reg-field">
               <label>Priority Level</label>
               <select value={priority} onChange={e => setPriority(e.target.value as any)}>
-                <option value="Critical">Critical (Immediate SLA)</option>
-                <option value="High">High (24h SLA)</option>
-                <option value="Medium">Medium (48h SLA)</option>
-                <option value="Low">Low (Routine)</option>
+                {availablePriorities.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
               </select>
             </div>
 
             <div className="reg-field">
               <label>Reporter Name</label>
-              <input value="Vishwajeet (Student)" disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+              <input value={`${user?.name || 'Unknown'} (${user?.role || 'User'})`} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
             </div>
           </div>
 
@@ -1770,7 +1745,8 @@ function Report({ onAddRecord, assets }: { onAddRecord: (record: IssueRecord) =>
   )
 }
 
-function Inventory({ assets }: { assets: AssetRecord[]; onAddAsset?: (asset: AssetRecord) => void }) {
+function Inventory() {
+  const { data: assets = [] } = useSWR<AssetRecord[]>('/assets', fetcher)
   const [activeQRAsset, setActiveQRAsset] = useState<AssetRecord | null>(null)
 
   return (
@@ -1787,8 +1763,8 @@ function Inventory({ assets }: { assets: AssetRecord[]; onAddAsset?: (asset: Ass
         <table className="archive-table">
           <thead>
             <tr>
-              <th>Roll Number</th>
-              <th>Name of Individual</th>
+              <th>Asset ID</th>
+              <th>Hardware Name</th>
               <th>Category</th>
               <th>Location</th>
               <th>Status</th>
@@ -1820,6 +1796,8 @@ function Inventory({ assets }: { assets: AssetRecord[]; onAddAsset?: (asset: Ass
 }
 
 function Analytics() {
+  const { data: analytics } = useSWR('/analytics', fetcher)
+
   return (
     <Page>
       <div className="page-heading">
@@ -1830,10 +1808,10 @@ function Analytics() {
         </div>
       </div>
       <div className="stat-grid">
-        <div className="stat-card"><div><p>Uptime Uptime</p><h2>99.8%</h2><span>Exam Ready</span></div></div>
-        <div className="stat-card"><div><p>Avg SLA Speed</p><h2>3.2h</h2><span>On Target</span></div></div>
-        <div className="stat-card"><div><p>Compliance</p><h2>96.4%</h2><span>+2.1% High</span></div></div>
-        <div className="stat-card"><div><p>Preventative Upkeep</p><h2>48</h2><span>Jobs Complete</span></div></div>
+        <div className="stat-card"><div><p>Uptime</p><h2>{analytics?.uptime || '99.8%'}</h2><span>Exam Ready</span></div></div>
+        <div className="stat-card"><div><p>Avg SLA Speed</p><h2>{analytics?.avgSlaSpeed || '3.2h'}</h2><span>On Target</span></div></div>
+        <div className="stat-card"><div><p>Compliance</p><h2>{analytics?.compliance || '96.4%'}</h2><span>+2.1% High</span></div></div>
+        <div className="stat-card"><div><p>Preventative Upkeep</p><h2>{analytics?.jobsComplete || '48'}</h2><span>Jobs Complete</span></div></div>
       </div>
     </Page>
   )
@@ -1877,8 +1855,8 @@ function AuthModal({
       const targetRole = user?.role || 'student'
       const roleMap: Record<string, string> = {
         'admin': '/dashboard',
-        'technician': '/inventory',
-        'student': '/report'
+        'technician': '/technician',
+        'student': '/student'
       }
       navigate(roleMap[targetRole] || '/', { replace: true })
     }
@@ -1960,12 +1938,6 @@ function AuthModal({
           <button type="submit" className="auth-submit" disabled={loading}>
             {loading ? 'Processing...' : 'Sign In'}
           </button>
-          
-          <div style={{ marginTop: '16px', textAlign: 'center' }}>
-            <button type="button" onClick={() => { setEmail('ajaydinodiya2007@gmail.com'); setPassword('admin123'); }} style={{ background: 'none', border: 'none', color: 'var(--txt-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }}>
-              Fill Mock Admin Login
-            </button>
-          </div>
         </form>
       </div>
     </div>
